@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {defaultModules, tokensText, migrateFirst} = require('../../src/electron/renderer/whale/usage');
+const {defaultModules, tokensText, migrateFirst, fitScale} = require('../../src/electron/renderer/whale/usage');
 
 test('desktop click card shows aggregate tokens and estimated cost without a DS balance or peak price', () => {
   const modules = defaultModules();
@@ -32,4 +32,29 @@ test('saved factory card upgrades without changing later steps, frames or custom
   const custom = [{kind: 'custom', modules: [{type: 'text', text: 'my own card'}]}, later];
   assert.equal(migrateFirst(custom, original), custom);
   assert.equal(migrateFirst([], original).length, 0);
+});
+
+test('usage text fits both dimensions without enlarging short values', () => {
+  for (const [width, height, contentWidth, contentHeight] of [[120, 70, 240, 60], [120, 70, 100, 140], [80, 40, 300, 180]]) {
+    const scale = fitScale(width, height, contentWidth, contentHeight);
+    assert(contentWidth * scale <= width);
+    assert(contentHeight * scale <= height);
+    assert(scale > 0 && scale <= 1);
+  }
+  assert.equal(fitScale(120, 70, 100, 60), 1);
+  assert.equal(fitScale(0, 0, 100, 60), 1, 'hidden bubbles wait for measurable geometry');
+});
+
+test('the saved whale.4 factory card gets smaller Codex typography without overwriting custom cards', () => {
+  const old = [
+    {type: 'text', text: '今日本机用量', size: 8, bold: true},
+    {type: 'today', tpl: '{local_today_tokens}', size: 16, rgb: 'indigo'},
+    {type: 'today', tpl: '估算费用 {expense_ds}', size: 6, color: '#9fb0d9'},
+    {type: 'text', text: '已识别客户端合计', size: 4, color: '#9fb0d9'}
+  ];
+  const migrated = migrateFirst([{kind: 'custom', modules: old}], []);
+  assert(migrated[0].modules[1].size < old[1].size);
+  assert(migrated[0].modules.every(module => module.fontFamily.includes('Segoe UI')));
+  const custom = [{kind: 'custom', modules: old.map(module => ({...module, fontFamily: 'my font'}))}];
+  assert.equal(migrateFirst(custom, []), custom);
 });

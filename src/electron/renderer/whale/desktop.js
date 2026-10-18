@@ -54,6 +54,9 @@ function sync() {
   let editing = false;
   const root = document.querySelector('.dshwv-root');
   if (root) {
+    for (const card of root.querySelectorAll('.dshwv-pop-open .whale-local-usage')) {
+      window.whaleLocalUsage?.fitCard(card);
+    }
     const menu = document.querySelector('.dshwv-menuview');
     if (menu && !menu.querySelector('.whale-monitor-links')) {
       const controls = document.createElement('div');

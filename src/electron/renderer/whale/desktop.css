@@ -2,3 +2,19 @@ html, body { margin: 0; width: 100%; height: 100%; background: transparent; over
 #root { display: none; }
 .whale-monitor-links { display: flex; gap: 6px; padding: 8px 0; }
 .whale-monitor-links button { flex: 1; border: 1px solid #c6d3ed; border-radius: 8px; background: #edf3ff; color: #203170; padding: 8px 4px; cursor: pointer; font: inherit; }
+
+/* Match the installed Codex UI's system font stack, including OS CJK fallback. */
+.dshwv-pop .dshwv-text, .dshwv-pop .dshwv-text .dshwv-trow, .dshwv-pop .dshwv-text .dshwv-trowtx {
+  font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+}
+.dshwv-text.whale-local-usage:not(.dshwv-textsafe) { width: 58%; height: 42%; }
+.dshwv-text.whale-local-usage.dshwv-textsafe { height: var(--whale-safe-height, 42%) !important; }
+.dshwv-text.whale-local-usage .dshwv-trow {
+  white-space: nowrap !important;
+  max-width: none !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  line-height: 1.18;
+  margin: calc(var(--dshw-u) * 2 * var(--whale-usage-fit, 1)) 0;
+}

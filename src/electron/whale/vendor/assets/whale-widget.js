@@ -14844,6 +14844,7 @@ function applyBubbleTextFrame(frame) {
       textBox.style.top = ''
       textBox.style.width = ''
       textBox.style.height = ''
+      textBox.style.removeProperty('--whale-safe-height')
       try { textBox.classList.remove('dshwv-textsafe') } catch (err) {}
       return
     }
@@ -14851,6 +14852,7 @@ function applyBubbleTextFrame(frame) {
     textBox.style.top = st.top
     textBox.style.width = st.width
     textBox.style.height = st.height
+    textBox.style.setProperty('--whale-safe-height', st.height)
     // v838：挂了安全区 ⇒ 允许换行（收窄安全区时文字跟着折行）
     try { textBox.classList.add('dshwv-textsafe') } catch (err) {}
   } catch (err) {}
@@ -17270,6 +17272,8 @@ function bubbleCloseVisual() {
 // 清掉 textBox 里遗留的模块行(自定义场景切走/关闭时,防止叠到默认/消耗内容上)
 function bubbleClearModuleRows() {
   try {
+    textBox.classList.remove('whale-local-usage')
+    textBox.style.removeProperty('--whale-usage-fit')
     var els = textBox.querySelectorAll('.dshwv-trow, .dshwv-mimg')
     for (var i = 0; i < els.length; i++) { try { textBox.removeChild(els[i]) } catch (err) {} }
   } catch (err) {}
@@ -18327,6 +18331,10 @@ function bubbleRowContentOf(mod) {
 // 把模块追加为行到指定父容器(真实泡泡 textBox 与编辑器预览共用;旧配置每模块一行 → 与旧版逐像素一致)
 function bubbleRowsTo(parentEl, mods) {
   if (!parentEl || !Array.isArray(mods)) return
+  if (window.whaleDesktop) {
+    parentEl.classList.toggle('whale-local-usage', mods.some(function (m) { return m && String(m.tpl || '').indexOf('{local_today_tokens}') >= 0 }))
+    if (!parentEl.classList.contains('whale-local-usage')) parentEl.style.removeProperty('--whale-usage-fit')
+  }
   var old = parentEl.querySelectorAll('.dshwv-trow, .dshwv-mimg')
   for (var i = 0; i < old.length; i++) { try { parentEl.removeChild(old[i]) } catch (err) {} }
   var ROW_MAX = 6 // 泡泡行数上限(维持旧版)
@@ -18392,7 +18400,7 @@ function bubbleRowsTo(parentEl, mods) {
       row.style.whiteSpace = 'nowrap'
       row.style.maxWidth = 'none'
     }
-    row.style.fontSize = 'calc(var(--dshw-u) * ' + bubbleModuleFontU(fSize) + ')'
+    row.style.fontSize = 'calc(var(--dshw-u) * ' + bubbleModuleFontU(fSize) + ' * var(--whale-usage-fit, 1))'
     // 加粗:普通模块 700;余额模块默认本就 800(重档),勾选加粗须用更重 900,避免“700 < 默认800”反而变细
     if (fBold) row.style.fontWeight = (m.type === 'balance') ? '900' : '700'
     else if (m.type === 'balance') row.style.fontWeight = '800'
@@ -18627,6 +18635,7 @@ function bubbleRenderModules(mods) {
     amountEl.style.display = 'none'
     hintEl.style.display = 'none'
     bubbleRowsTo(textBox, mods)
+    if (window.whaleDesktop) window.whaleLocalUsage.fitCard(textBox)
   } catch (err) {}
 }
 // 编辑器真实泡泡预览:用与真实相同的宽度 B 排版(保证换行判定一致),
