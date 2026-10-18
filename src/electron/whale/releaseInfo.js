@@ -2,7 +2,7 @@
 
 const metadata = require('../../../package.json');
 
-const VERSION = metadata.name === 'whale-monitor' ? metadata.version : '0.74.0-whale.2';
+const VERSION = metadata.name === 'whale-monitor' ? metadata.version : '0.75.0';
 const OWNER = 'Ksanadu';
 const REPO = 'Whale-Monitor';
 const RELEASES_URL = `https://github.com/${OWNER}/${REPO}/releases`;

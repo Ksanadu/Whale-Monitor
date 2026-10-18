@@ -14,7 +14,7 @@ module.exports = {
   extraMetadata: {name: 'whale-monitor', version, productName: 'Whale Monitor'},
   artifactName: 'Whale-Monitor-${version}-${arch}-${target}.${ext}',
   directories: {output: 'dist/whale'},
-  publish: [{provider: 'github', owner: OWNER, repo: REPO, channel: 'whale', releaseType: 'prerelease'}],
+  publish: [{provider: 'github', owner: OWNER, repo: REPO, channel: 'whale', releaseType: 'release'}],
   generateUpdatesFilesForAllChannels: true,
   win: {target: [{target: 'portable', arch: ['x64']}, {target: 'nsis', arch: ['x64']}],
     icon: 'src/electron/whale/vendor/icon.png', signAndEditExecutable: true,

@@ -11,12 +11,19 @@ const {createWhaleUpdater, latestWhaleRelease, installationKind, initializeWhale
 const {APP_ID, RELEASES_API} = require('../../src/electron/whale/releaseInfo');
 const {verifyWhaleRelease} = require('../../scripts/verify-whale-release');
 const {automaticAppUpdateControlState} = require('../../src/electron/renderer/appUpdatePresentation');
+const {nextWhaleVersion} = require('../../scripts/next-whale-version');
 
 const currentVersion = '0.74.0-whale.2', version = '0.74.0-whale.3';
 function release(v = version, extra = {}) {
   return {tag_name: `v${v}`, draft: false, prerelease: true,
     assets: [`Whale-Monitor-${v}-x64-nsis.exe`, `Whale-Monitor-${v}-x64-portable.exe`, 'whale.yml'].map(name => ({name, size: 1234, state: 'uploaded'})), ...extra};
 }
+
+test('stable versions supersede previews and advance from the latest published stable release', () => {
+  assert.equal(nextWhaleVersion([release('0.74.0-whale.6')]), '0.75.0');
+  assert.equal(nextWhaleVersion([release('0.75.0', {prerelease: false}), release('0.76.0', {draft: true, prerelease: false})]), '0.75.1');
+  assert.equal(latestWhaleRelease([release('0.74.0-whale.6'), release('0.75.0', {prerelease: false})], {currentVersion, installed: true}).version, '0.75.0');
+});
 function fixture(t, options = {}) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'whale-updater-'));
   const calls = [], native = new EventEmitter();

@@ -40,7 +40,7 @@ NSIS 的 `customInstall` 在安装目录写入绑定本应用 id 的 `whale-inst
 
 `automaticAppUpdates` 在旧独立版首次升级时迁移为开启，`whaleUpdatesConfigured` 标记后续不再覆盖用户选择。设置界面中的自动更新开关同时控制安装版自动安装与便携版自动打开网页。
 
-`.github/workflows/whale-release.yml` 仅在本 fork 的 `whale-desktop`/`main` 提交及手动触发时发布。版本使用 `0.74.0-whale.<run_number+2>`，不提交版本号避免循环构建。发布前执行 lint、桌宠/更新相关回归、Windows 打包及 SHA-512/大小检查，所有附件先上传草稿，再公开发布，避免客户端看到半成品。`WHALE_BUILD_VERSION` 只改变打包元数据，不改上游共享包版本。
+`.github/workflows/whale-release.yml` 仅在本 fork 的 `whale-desktop`/`main` 提交及手动触发时发布正式版。`scripts/next-whale-version.js` 以 `releaseInfo.VERSION` 为最低版本，之后在最新已发布的正式版上递增补丁号，跳过草稿和预览版；串行发布避免并发版本冲突，不提交版本号避免循环构建。发布前执行 lint、桌宠/更新相关回归、Windows 打包及 SHA-512/大小检查，所有附件先上传草稿，再公开发布并设为 Latest，避免客户端看到半成品。`WHALE_BUILD_VERSION` 只改变打包元数据，不改上游共享包版本。
 
 新增回归覆盖：独立设置与资源接口、凭据隔离、失败/取消不通知、USD 与 CNY 预算分离、启动静默、尾部半条记录、截断后的重新计序、版本化日志、子智能体及无服务器 worker。
 
