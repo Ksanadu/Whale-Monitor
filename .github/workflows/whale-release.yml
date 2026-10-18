@@ -33,7 +33,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - name: Verify desktop and updater regressions
-        run: node --test tests/electron/whale*.test.js tests/electron/appUpdateState.test.js tests/electron/appUpdatePresentation.test.js tests/electron/updateInstallQuit.test.js tests/electron/tray.test.js
+        run: node --test tests/electron/whale*.test.js tests/electron/appUpdateState.test.js tests/electron/appUpdatePresentation.test.js tests/electron/updateInstallQuit.test.js tests/electron/tray.test.js tests/electron/windowLifecycle.test.js tests/electron/statsRenderScheduler.test.js
       - run: npm run dist:whale:win
       - name: Verify installer hashes and update channels
         run: node scripts/verify-whale-release.js

@@ -7317,7 +7317,7 @@ function loadWindowFile(target, options = {}) {
   const reveal = () => {
     if (revealed) return;
     revealed = true;
-    if (settings?.trayMode) return; // stay hidden until tray click
+    if (settings?.trayMode || options.initiallyHidden === true) return; // stay hidden until explicitly opened
     if (restoreWindowMaximizedForReveal(target, settings, {
       restoreMaximized: options.restoreMaximized === true,
       inactive: options.inactive === true,
@@ -7503,6 +7503,7 @@ function createWindow(boundsOverride, options = {}) {
     if (win.isVisible()) sendMainWindowVisibility(win);
   });
   loadWindowFile(win, {
+    initiallyHidden: options.initiallyHidden === true,
     waitForContent: options.waitForContent === true,
     inactive: options.inactive === true,
     collapsedFloatingBubble,
@@ -7513,7 +7514,7 @@ function createWindow(boundsOverride, options = {}) {
         suppressInitialNumberAnimation: options.suppressInitialNumberAnimation === true,
         viewState: rendererViewState
       }),
-      ...(settings?.trayMode ? { windowHidden: '1' } : {}),
+      ...(settings?.trayMode || options.initiallyHidden ? { windowHidden: '1' } : {}),
       ...(settings?.systemGlass === false ? { systemGlassDisabled: '1' } : {}),
       ...(windowsAccentFallback ? { windowsBackdropFallback: '1' } : {})
     }
@@ -7758,7 +7759,7 @@ app.whenReady().then(async () => {
       openMonitor: () => { if (!mainWindow || mainWindow.isDestroyed()) createWindow(); showWindow(mainWindow); },
       logger: message => console.warn('[whale]', message)});
   }
-  createWindow();
+  createWindow(undefined, {initiallyHidden: WHALE_DESKTOP});
   syncLoginItemSettingFromOs();
   configureWindowToggleShortcut();
   // The retired in-app npm updater kept upstream tokscale builds here; the
@@ -9534,7 +9535,10 @@ app.whenReady().then(async () => {
   }
 });
 
-app.on('second-instance', focusExistingWindow);
+app.on('second-instance', () => {
+  if (WHALE_DESKTOP) whaleDesktop?.show();
+  else focusExistingWindow();
+});
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 // Every quit route (Cmd+Q, last window closed, system shutdown) lands here.
 // performQuit is synchronous through to the exit, so there is nothing to wait

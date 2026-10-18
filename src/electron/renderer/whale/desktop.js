@@ -61,7 +61,7 @@ function sync() {
     if (menu && !menu.querySelector('.whale-monitor-links')) {
       const controls = document.createElement('div');
       controls.className = 'whale-monitor-links';
-      for (const [text, action] of [['统计与账户', () => bridge.openMonitor()], ['切换显示器', () => bridge.nextDisplay()]]) {
+      for (const [text, action] of [['切换显示器', () => bridge.nextDisplay()]]) {
         const button = document.createElement('button'); button.textContent = text; button.addEventListener('click', action); controls.appendChild(button);
       }
       menu.prepend(controls);
@@ -84,7 +84,7 @@ function sync() {
 
 function queue() { if (!scheduled) { scheduled = true; requestAnimationFrame(sync); } }
 new MutationObserver(() => { frameBudget = 20; queue(); }).observe(document.documentElement, {subtree: true, attributes: true, childList: true});
-addEventListener('pointerdown', () => { dragging = true; frameBudget = 20; queue(); }, true);
+addEventListener('pointerdown', event => { dragging = event.button === 0; frameBudget = 20; queue(); }, true);
 addEventListener('pointerup', () => { dragging = false; frameBudget = 20; queue(); }, true);
 addEventListener('pointercancel', () => { dragging = false; queue(); }, true);
 addEventListener('resize', queue);

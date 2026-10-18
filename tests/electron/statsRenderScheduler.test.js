@@ -169,14 +169,14 @@ test('renderer wires visibility scheduling without deferring tray icon updates',
   );
 });
 
-test('native window visibility covers a tray window that has never been shown', () => {
+test('native window visibility covers tray and initially hidden windows that have never been shown', () => {
   const main = fs.readFileSync(path.join(electronDir, 'main.js'), 'utf8');
   const preload = fs.readFileSync(path.join(electronDir, 'preload.js'), 'utf8');
   const app = fs.readFileSync(path.join(rendererDir, 'app.js'), 'utf8');
 
   assert.match(main, /webContents\.send\('window:visibility'/);
   assert.match(main, /win\.on\('show',[\s\S]*win\.on\('hide',[\s\S]*win\.on\('minimize',[\s\S]*win\.on\('restore'/);
-  assert.match(main, /settings\?\.trayMode \? \{ windowHidden: '1' \} : \{\}/);
+  assert.match(main, /settings\?\.trayMode \|\| options\.initiallyHidden \? \{ windowHidden: '1' \} : \{\}/);
   assert.match(preload, /onWindowVisibilityPush:[\s\S]*ipcRenderer\.on\('window:visibility'/);
   assert.match(app, /windowVisible: new URLSearchParams\(window\.location\.search\)\.get\('windowHidden'\) !== '1'/);
   assert.match(app, /return document\.hidden \|\| !state\.windowVisible;/);

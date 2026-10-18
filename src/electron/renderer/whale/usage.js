@@ -6,10 +6,7 @@
 
   function defaultModules() {
     return [
-      {type: 'text', text: '今日本机用量', size: 4, bold: true},
-      {type: 'today', tpl: '{local_today_tokens}', size: 8, rgb: 'indigo'},
-      {type: 'today', tpl: '估算费用 {expense_ds}', size: 3, color: '#536ba9'},
-      {type: 'text', text: '已识别客户端合计', size: 1, color: '#536ba9'}
+      {type: 'today', tpl: '{local_today_tokens}', size: 8, rgb: 'indigo'}
     ].map(module => ({...module, fontFamily}));
   }
 
@@ -28,7 +25,13 @@
       {type: 'text', text: '已识别客户端合计', size: 4, color: '#9fb0d9'}
     ];
     const saved = JSON.stringify(first?.modules);
-    if (first?.kind !== 'custom' || (saved !== JSON.stringify(originalModules) && saved !== JSON.stringify(previousUsage))) return items;
+    const previousTypography = [
+      {type: 'text', text: '今日本机用量', size: 4, bold: true},
+      {type: 'today', tpl: '{local_today_tokens}', size: 8, rgb: 'indigo'},
+      {type: 'today', tpl: '估算费用 {expense_ds}', size: 3, color: '#536ba9'},
+      {type: 'text', text: '已识别客户端合计', size: 1, color: '#536ba9'}
+    ].map(module => ({...module, fontFamily}));
+    if (first?.kind !== 'custom' || ![originalModules, previousUsage, previousTypography].some(modules => saved === JSON.stringify(modules))) return items;
     return [{...first, modules: defaultModules()}, ...items.slice(1)];
   }
 

@@ -4,14 +4,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {defaultModules, tokensText, migrateFirst, fitScale} = require('../../src/electron/renderer/whale/usage');
 
-test('desktop click card shows aggregate tokens and estimated cost without a DS balance or peak price', () => {
+test('desktop click card shows only today tokens without cost or explanatory text', () => {
   const modules = defaultModules();
-  assert.equal(modules[0].text, '今日本机用量');
-  assert(modules.some(module => module.tpl === '{local_today_tokens}'));
-  assert(modules.some(module => module.tpl === '估算费用 {expense_ds}'));
-  assert(!modules.some(module => ['balance', 'peak', 'nextpeak'].includes(module.type)));
-  modules[0].text = 'custom';
-  assert.equal(defaultModules()[0].text, '今日本机用量');
+  assert.equal(modules.length, 1);
+  assert.equal(modules[0].tpl, '{local_today_tokens}');
+  assert.equal(modules[0].text, undefined);
+  modules[0].tpl = 'custom';
+  assert.equal(defaultModules()[0].tpl, '{local_today_tokens}');
 });
 
 test('missing token counts are distinct from zero and large totals fit a bubble', () => {
@@ -25,7 +24,7 @@ test('saved factory card upgrades without changing later steps, frames or custom
   const later = {kind: 'random'};
   const items = [{kind: 'custom', modules: original, frameId: 'mine'}, later];
   const migrated = migrateFirst(items, original);
-  assert.equal(migrated[0].modules[0].text, '今日本机用量');
+  assert.equal(migrated[0].modules[0].tpl, '{local_today_tokens}');
   assert.equal(migrated[0].frameId, 'mine');
   assert.equal(migrated[1], later);
   assert.equal(items[0].modules, original);
@@ -53,8 +52,19 @@ test('the saved whale.4 factory card gets smaller Codex typography without overw
     {type: 'text', text: '已识别客户端合计', size: 4, color: '#9fb0d9'}
   ];
   const migrated = migrateFirst([{kind: 'custom', modules: old}], []);
-  assert(migrated[0].modules[1].size < old[1].size);
+  assert(migrated[0].modules[0].size < old[1].size);
   assert(migrated[0].modules.every(module => module.fontFamily.includes('Segoe UI')));
   const custom = [{kind: 'custom', modules: old.map(module => ({...module, fontFamily: 'my font'}))}];
   assert.equal(migrateFirst(custom, []), custom);
+});
+
+test('the saved whale.5 typography card also migrates to a token-only card', () => {
+  const fontFamily = '"Segoe UI", "Microsoft YaHei UI", sans-serif';
+  const old = [
+    {type: 'text', text: '今日本机用量', size: 4, bold: true},
+    {type: 'today', tpl: '{local_today_tokens}', size: 8, rgb: 'indigo'},
+    {type: 'today', tpl: '估算费用 {expense_ds}', size: 3, color: '#536ba9'},
+    {type: 'text', text: '已识别客户端合计', size: 1, color: '#536ba9'}
+  ].map(module => ({...module, fontFamily}));
+  assert.deepEqual(migrateFirst([{kind: 'custom', modules: old}], [])[0].modules, defaultModules());
 });

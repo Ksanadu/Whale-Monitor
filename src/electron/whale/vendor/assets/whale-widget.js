@@ -1599,12 +1599,13 @@ function dshwCustSel(sel, opts) {
 var usageRecBtn = document.createElement('button')
 usageRecBtn.type = 'button'
 usageRecBtn.className = 'dshwv-roleimport'
-usageRecBtn.textContent = '- = 小鲸鱼记账 = -'
-usageRecBtn.title = '查看今日/近7天/全部消费记录'
+usageRecBtn.textContent = window.whaleDesktop ? '统计与账户' : '- = 小鲸鱼记账 = -'
+usageRecBtn.title = window.whaleDesktop ? '查看 Token 用量、统计与账户' : '查看今日/近7天/全部消费记录'
 usageRecBtn.addEventListener('click', function (e) {
   e.stopPropagation()
   // v793：「关于/自检」打开时，这个底部按钮也是「‹ 返回」
   if (aboutPanelOpen) { hideAboutSub(); return }
+  if (window.whaleDesktop) { closeMenu(); window.whaleDesktop.openMonitor(); return }
   toggleUsagePanel()
 })
 // —— 任务结束音(与按下/松开共用音效库;开启才可选,默认取已导入的 entity) ——
@@ -2326,11 +2327,17 @@ var usageHideTimer = null
 var usageShowTimer = null
 function setUsageNavBtn(inUsage) {
   try {
+    if (window.whaleDesktop) {
+      usageRecBtn.textContent = inUsage ? '‹ 返回' : '统计与账户'
+      usageRecBtn.title = inUsage ? '返回主菜单' : '查看 Token 用量、统计与账户'
+      return
+    }
     usageRecBtn.textContent = inUsage ? '‹ 返回' : '- = 小鲸鱼记账 = -'
     usageRecBtn.title = inUsage ? '返回主菜单' : '查看今日/近7天/全部消费记录'
   } catch (err) {}
 }
 function showUsageSub() {
+  if (window.whaleDesktop) return
   try { if (usageHideTimer) { clearTimeout(usageHideTimer); usageHideTimer = null } } catch (err) {}
   usagePanelOpen = true
   // 锁定外层 menuBox 当前可见的宽高;用量视图占按钮上方区域并内部滚动
@@ -19917,7 +19924,9 @@ var menuOpen = false
 var menuClosedAt = 0 // 最近一次关闭菜单的时刻(用于避免"关掉后同一次手势又把它长按打开")
 function toggleMenu() {
   // v865（issue #237 后半）：打开菜单时补读一次 size 配置（别的端/别的标签改过也能立刻生效）
-  try { resyncSizeCfg() } catch (err) {}
+  // The standalone UI already owns live settings. Replaying the saved size and
+  // anchor here resets a freely dragged pet when its context menu opens.
+  try { if (!window.whaleDesktop) resyncSizeCfg() } catch (err) {}
   menuOpen = !menuOpen
   if (menuOpen) positionMenu()
   menuBox.classList.toggle('dshwv-menu-open', menuOpen)
