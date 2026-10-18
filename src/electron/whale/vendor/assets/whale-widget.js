@@ -17279,7 +17279,7 @@ function bubbleCloseVisual() {
 // 清掉 textBox 里遗留的模块行(自定义场景切走/关闭时,防止叠到默认/消耗内容上)
 function bubbleClearModuleRows() {
   try {
-    textBox.classList.remove('whale-local-usage', 'whale-system-message', 'whale-fit-card')
+    textBox.classList.remove('whale-local-usage', 'whale-completion', 'whale-system-message', 'whale-fit-card')
     textBox.style.removeProperty('--whale-usage-fit')
     var els = textBox.querySelectorAll('.dshwv-trow, .dshwv-mimg')
     for (var i = 0; i < els.length; i++) { try { textBox.removeChild(els[i]) } catch (err) {} }
@@ -17381,7 +17381,11 @@ function bubbleRenderRandom(lines) {
 }
 // 每轮消耗提示(v720):内容改为可编辑的模块列表,与余额预警/预算同一条渲染链路。
 // 旧版是写死的三段(label/amount/hint),现在的默认内容(usageTurnCostDefaultLines)复刻它的观感。
-function bubbleRenderCostMods(amount, sessionName) {
+function bubbleRenderCostMods(amount, sessionName, tokens) {
+  if (window.whaleDesktop) {
+    bubbleRenderModules(window.whaleLocalUsage.completionModules(tokens))
+    return
+  }
   var name = String(sessionName || '').trim()
   var mods = usageAlertModsResolved(usageTurnCostLines(), null, null, usageCostValue(amount), name)
   if (name) {
@@ -18651,7 +18655,10 @@ function bubbleRenderModules(mods) {
     labelEl.style.display = 'none'
     amountEl.style.display = 'none'
     hintEl.style.display = 'none'
-    if (window.whaleDesktop) textBox.classList.toggle('whale-system-message', !!(bubbleScene && (bubbleScene.kind === 'cost' || bubbleScene.kind === 'alert' || bubbleScene.kind === 'wait')))
+    if (window.whaleDesktop) {
+      textBox.classList.toggle('whale-system-message', !!(bubbleScene && (bubbleScene.kind === 'cost' || bubbleScene.kind === 'alert' || bubbleScene.kind === 'wait')))
+      textBox.classList.toggle('whale-completion', !!(bubbleScene && bubbleScene.kind === 'cost'))
+    }
     bubbleRowsTo(textBox, mods)
     if (window.whaleDesktop) window.whaleLocalUsage.fitCard(textBox)
   } catch (err) {}
@@ -18822,7 +18829,7 @@ function hideBubble() {
   lastHintText = null
   bubbleCloseVisual()
 }
-function showCostBubble(amount, sessionName) {
+function showCostBubble(amount, sessionName, tokens) {
   if (!bubbleOn || !turnCostOn) return
   // v778：②区「冒泡提示」勾选框（events.turnCost.bubbleOn）以前**只写不读** —— 取消勾选照样弹。
   //   同类问题（"控件有值、没有消费方"）与本次修的音量滑块同源，一并接上：
@@ -18833,7 +18840,7 @@ function showCostBubble(amount, sessionName) {
   } catch (err) {}
   // 进入系统泡泡队列(等级3):若同批有预警/预算,则排在它们之后展示
   // v851：带上"每轮消耗提示"自己的框（空 = 跟随保底）
-  whaleSysPush({ kind: 'cost', amount: amount, sessionName: String(sessionName || ''), frameId: sysFrameIdOf('cost'), rank: 3 })
+  whaleSysPush({ kind: 'cost', amount: amount, sessionName: String(sessionName || ''), tokens: tokens, frameId: sysFrameIdOf('cost'), rank: 3 })
 }
 function hideCostBubble() {
   // 与手动点击“第 n 次点击”一致:有下一项时保持打开淡切,无下一项才收起
@@ -18875,7 +18882,7 @@ function whaleSysQueueInsert(item) {
 function whaleSysOpenItem(item) {
   whaleSysItem = item
   if (item.kind === 'cost') {
-    sceneOpen('cost', function () { bubbleRenderCostMods(item.amount, item.sessionName) }, turnCostCloseMs > 0 ? turnCostCloseMs : 0)
+    sceneOpen('cost', function () { bubbleRenderCostMods(item.amount, item.sessionName, item.tokens) }, turnCostCloseMs > 0 ? turnCostCloseMs : 0)
   } else if (item.kind === 'wait') {
     // 等待交互：常驻（ttl 0 = sceneOpen 不布自动关闭计时器），内容在渲染时按当前设置取
     sceneOpen('wait', function () { bubbleRenderWaitMods(item.waitKind) }, 0)
@@ -22363,7 +22370,7 @@ function pollLastTurn() {
     lastCostSeq = d.seq
     if (d.reason !== 'completed' || d.turn === null || d.amount === null || !d.sessionId) return
     playTaskEndSound()
-    showCostBubble(Number(d.amount), d.sessionName || d.sessionId)
+    showCostBubble(Number(d.amount), d.sessionName || d.sessionId, d.tokens)
   }).catch(function () {}).then(function () {
     clearTimeout(timeout)
     lastCostPolling = false

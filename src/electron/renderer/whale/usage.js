@@ -16,6 +16,15 @@
     return tokenCountText(value) + ' Tokens';
   }
 
+  function completionModules(tokens) {
+    const [title, count] = defaultModules();
+    return [
+      {...title, text: '任务已完成', row: 1},
+      {...title, text: '花费Token：', row: 2},
+      {type: 'text', text: tokenCountText(tokens), size: count.size, rgb: count.rgb, fontFamily: count.fontFamily, row: 3}
+    ];
+  }
+
   function tokenCountText(value) {
     if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return '—';
     return new Intl.NumberFormat('en-US', {notation: 'compact', maximumFractionDigits: 2}).format(value);
@@ -82,7 +91,7 @@
     fitted.set(parent, {signature, row: rows[0]});
   }
 
-  const api = {defaultModules, tokensText, tokenCountText, migrateFirst, fitScale, fitCard};
+  const api = {defaultModules, completionModules, tokensText, tokenCountText, migrateFirst, fitScale, fitCard};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') window.whaleLocalUsage = api;
 })();

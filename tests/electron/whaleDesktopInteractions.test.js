@@ -21,14 +21,39 @@ test('adding a completed session title preserves separate cost lines and explici
     [{type:'text',text:'消耗',row:1},{type:'text',text:'¥ 1.23',row:1},{type:'today',tpl:'今日已用'}]
   ]) {
     let rendered;
-    const context = vm.createContext({usageTurnCostLines:()=>modules,
+    const context = vm.createContext({window:{},usageTurnCostLines:()=>modules,
       usageAlertModsResolved:value=>JSON.parse(JSON.stringify(value)),usageCostValue:()=> '1.23',
       bubbleRenderModules:value=>{rendered=value;},WAIT_SESSION_MAX:24});
     vm.runInContext(section(widget,'function bubbleRowKeyOf(m) {','// F2 行模型→'), context);
-    vm.runInContext(section(widget,'function bubbleRenderCostMods(amount, sessionName) {','// 等待交互提示'), context);
+    vm.runInContext(section(widget,'function bubbleRenderCostMods(amount, sessionName, tokens) {','// 等待交互提示'), context);
     const expectedRows=context.bubbleRowsOf(modules).length+1;
     context.bubbleRenderCostMods(1.23,'需要显示任务完成状态的对话');
     assert.equal(context.bubbleRowsOf(rendered).length,expectedRows,'completion title must not merge unrelated content into one oversized line');
+  }
+});
+
+test('queued desktop completions retain their own token count and use the daily card typography', () => {
+  const usage = require('../../src/electron/renderer/whale/usage');
+  const queued = [], rendered = [];
+  const context = vm.createContext({window:{whaleDesktop:true,whaleLocalUsage:usage},
+    bubbleOn:true,turnCostOn:true,turnCostCloseMs:0,soundEventCfg:()=>({}),sysFrameIdOf:()=>'',
+    whaleSysPush:item=>queued.push(item),sceneOpen:(_kind,render)=>render(),
+    bubbleRenderModules:modules=>rendered.push(modules)});
+  vm.runInContext(section(widget,'function showCostBubble(amount, sessionName, tokens) {','function hideCostBubble()'),context);
+  vm.runInContext(section(widget,'function whaleSysOpenItem(item) {','function whaleSysPush(item) {'),context);
+  vm.runInContext(section(widget,'function bubbleRenderCostMods(amount, sessionName, tokens) {','// 等待交互提示'),context);
+  context.showCostBubble(1.23,'first task',123456);
+  context.showCostBubble(9.99,'second task',0);
+  context.whaleSysOpenItem(queued[1]);
+  context.whaleSysOpenItem(queued[0]);
+  assert.deepEqual(rendered.map(modules=>modules.map(module=>module.text)),[
+    ['任务已完成','花费Token：','0'],['任务已完成','花费Token：','123.46K']
+  ]);
+  const daily=usage.defaultModules();
+  for(const modules of rendered){
+    assert(modules.every(module=>module.fontFamily===daily[0].fontFamily));
+    assert.equal(modules[0].size,daily[0].size);
+    assert.equal(modules[2].size,daily[1].size);
   }
 });
 
