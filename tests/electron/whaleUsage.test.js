@@ -4,15 +4,16 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {defaultModules, tokensText, tokenCountText, migrateFirst, fitScale} = require('../../src/electron/renderer/whale/usage');
 
-test('desktop click card shows only today tokens without cost or explanatory text', () => {
+test('desktop click card separates the title and large proportional token count into two rows', () => {
   const modules = defaultModules();
-  assert.equal(modules.length, 1);
-  assert.equal(modules[0].tpl, '今日Token用量：{local_today_count}');
+  assert.equal(modules.length, 2);
+  assert.equal(modules[0].text, '今日Token');
+  assert.equal(modules[1].tpl, '{local_today_count}');
+  assert(modules[1].size > modules[0].size);
   assert(modules[0].fontFamily.startsWith('Consolas'));
-  assert.equal(modules[0].tpl.replace('{local_today_count}', tokenCountText(1234567)), '今日Token用量：1.23M');
-  assert.equal(modules[0].text, undefined);
+  assert.equal(modules[1].tpl.replace('{local_today_count}', tokenCountText(1234567)), '1.23M');
   modules[0].tpl = 'custom';
-  assert.equal(defaultModules()[0].tpl, '今日Token用量：{local_today_count}');
+  assert.equal(defaultModules()[1].tpl, '{local_today_count}');
 });
 
 test('missing token counts are distinct from zero and large totals fit a bubble', () => {
@@ -29,7 +30,7 @@ test('saved factory card upgrades without changing later steps, frames or custom
   const later = {kind: 'random'};
   const items = [{kind: 'custom', modules: original, frameId: 'mine'}, later];
   const migrated = migrateFirst(items, original);
-  assert.equal(migrated[0].modules[0].tpl, '今日Token用量：{local_today_count}');
+  assert.equal(migrated[0].modules[1].tpl, '{local_today_count}');
   assert.equal(migrated[0].frameId, 'mine');
   assert.equal(migrated[1], later);
   assert.equal(items[0].modules, original);
@@ -76,5 +77,10 @@ test('the saved whale.5 typography card also migrates to a token-only card', () 
 
 test('the saved 0.75.0 token card upgrades to the labeled Consolas card', () => {
   const old = [{type: 'today', tpl: '{local_today_tokens}', size: 8, rgb: 'indigo', fontFamily: '"Segoe UI", "Microsoft YaHei UI", sans-serif'}];
+  assert.deepEqual(migrateFirst([{kind: 'custom', modules: old}], [])[0].modules, defaultModules());
+});
+
+test('the 0.75.1 single-line label migrates to two larger rows', () => {
+  const old = [{type: 'today', tpl: '今日Token用量：{local_today_count}', size: 8, rgb: 'indigo', fontFamily: 'Consolas, "Microsoft YaHei UI", monospace'}];
   assert.deepEqual(migrateFirst([{kind: 'custom', modules: old}], [])[0].modules, defaultModules());
 });
