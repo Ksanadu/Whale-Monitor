@@ -50,22 +50,35 @@
   }
 
   function fitCard(parent) {
-    if (!parent.classList.contains('whale-local-usage')) return;
-    const rows = Array.from(parent.children).filter(row => row.classList.contains('dshwv-trow'));
+    if (!parent.classList.contains('whale-fit-card')) return;
+    const rows = Array.from(parent.children).filter(row => row.classList.contains('dshwv-trow') || row.classList.contains('dshwv-mimg'));
     const width = parent.clientWidth, height = parent.clientHeight;
     if (!rows.length || !width || !height) return;
     const signature = JSON.stringify([width, height, rows.map(row => [row.textContent, row.getAttribute('style')])]);
     const previous = fitted.get(parent);
     if (previous?.signature === signature && previous.row === rows[0]) return;
-    parent.style.setProperty('--whale-usage-fit', '1');
-    let contentWidth = 0, contentHeight = 0;
-    for (const row of rows) {
-      const style = getComputedStyle(row);
-      contentWidth = Math.max(contentWidth, row.scrollWidth);
-      contentHeight += row.offsetHeight + parseFloat(style.marginTop) + parseFloat(style.marginBottom);
+    function fits(scale) {
+      parent.style.setProperty('--whale-usage-fit', String(scale));
+      let contentWidth = 0, contentHeight = 0;
+      for (const row of rows) {
+        const style = getComputedStyle(row);
+        contentWidth = Math.max(contentWidth, row.scrollWidth);
+        contentHeight += row.offsetHeight + (parseFloat(style.marginTop) || 0) + (parseFloat(style.marginBottom) || 0);
+      }
+      return fitScale(Math.max(1, width - 8), Math.max(1, height - 8), contentWidth, contentHeight) === 1;
     }
-    const scale = fitScale(Math.max(1, width - 8), Math.max(1, height - 8), contentWidth, contentHeight);
-    parent.style.setProperty('--whale-usage-fit', String(Math.floor(scale * 1000) / 1000));
+    let scale = 1;
+    if (!fits(1)) {
+      let low = 0, high = 1;
+      // Wrapped session names reflow as the font shrinks. Find the largest
+      // size that fits both dimensions instead of scaling one stale measure.
+      for (let step = 0; step < 10; step++) {
+        const middle = (low + high) / 2;
+        if (fits(middle)) low = middle; else high = middle;
+      }
+      scale = Math.floor(low * 1000) / 1000;
+    }
+    parent.style.setProperty('--whale-usage-fit', String(scale));
     fitted.set(parent, {signature, row: rows[0]});
   }
 

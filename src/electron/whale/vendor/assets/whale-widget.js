@@ -17279,7 +17279,7 @@ function bubbleCloseVisual() {
 // 清掉 textBox 里遗留的模块行(自定义场景切走/关闭时,防止叠到默认/消耗内容上)
 function bubbleClearModuleRows() {
   try {
-    textBox.classList.remove('whale-local-usage')
+    textBox.classList.remove('whale-local-usage', 'whale-system-message', 'whale-fit-card')
     textBox.style.removeProperty('--whale-usage-fit')
     var els = textBox.querySelectorAll('.dshwv-trow, .dshwv-mimg')
     for (var i = 0; i < els.length; i++) { try { textBox.removeChild(els[i]) } catch (err) {} }
@@ -17386,9 +17386,12 @@ function bubbleRenderCostMods(amount, sessionName) {
   var mods = usageAlertModsResolved(usageTurnCostLines(), null, null, usageCostValue(amount), name)
   if (name) {
     // Keep each queued completion attached to its own conversation, including after wait.json changes.
+    var originalRows = bubbleRowsOf(mods)
+    for (var ri = 0; ri < originalRows.length; ri++) {
+      for (var mi = 0; mi < originalRows[ri].length; mi++) originalRows[ri][mi].row = ri + 2
+    }
     for (var i = 0; i < mods.length; i++) {
       var m = mods[i]
-      m.row = (Number(m.row) || 1) + 1
       if (m.type === 'session') {
         var n = m.len == null ? WAIT_SESSION_MAX : Number(m.len)
         var label = isFinite(n) && n > 0 && name.length > n ? name.slice(0, n) + '...' : name
@@ -18346,7 +18349,8 @@ function bubbleRowsTo(parentEl, mods) {
   if (!parentEl || !Array.isArray(mods)) return
   if (window.whaleDesktop) {
     parentEl.classList.toggle('whale-local-usage', mods.some(function (m) { return m && /\{local_today_(tokens|count)\}/.test(String(m.tpl || '')) }))
-    if (!parentEl.classList.contains('whale-local-usage')) parentEl.style.removeProperty('--whale-usage-fit')
+    parentEl.classList.toggle('whale-fit-card', parentEl.classList.contains('whale-local-usage') || parentEl.classList.contains('whale-system-message'))
+    if (!parentEl.classList.contains('whale-fit-card')) parentEl.style.removeProperty('--whale-usage-fit')
   }
   var old = parentEl.querySelectorAll('.dshwv-trow, .dshwv-mimg')
   for (var i = 0; i < old.length; i++) { try { parentEl.removeChild(old[i]) } catch (err) {} }
@@ -18647,6 +18651,7 @@ function bubbleRenderModules(mods) {
     labelEl.style.display = 'none'
     amountEl.style.display = 'none'
     hintEl.style.display = 'none'
+    if (window.whaleDesktop) textBox.classList.toggle('whale-system-message', !!(bubbleScene && (bubbleScene.kind === 'cost' || bubbleScene.kind === 'alert' || bubbleScene.kind === 'wait')))
     bubbleRowsTo(textBox, mods)
     if (window.whaleDesktop) window.whaleLocalUsage.fitCard(textBox)
   } catch (err) {}

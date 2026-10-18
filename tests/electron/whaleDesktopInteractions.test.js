@@ -15,6 +15,23 @@ function section(source, start, end) {
   return source.slice(from, to);
 }
 
+test('adding a completed session title preserves separate cost lines and explicit inline groups', () => {
+  for (const modules of [
+    [{type:'text',text:'上一轮对话消耗:'},{type:'text',text:'¥ 1.23'},{type:'today',tpl:'今日已用'}],
+    [{type:'text',text:'消耗',row:1},{type:'text',text:'¥ 1.23',row:1},{type:'today',tpl:'今日已用'}]
+  ]) {
+    let rendered;
+    const context = vm.createContext({usageTurnCostLines:()=>modules,
+      usageAlertModsResolved:value=>JSON.parse(JSON.stringify(value)),usageCostValue:()=> '1.23',
+      bubbleRenderModules:value=>{rendered=value;},WAIT_SESSION_MAX:24});
+    vm.runInContext(section(widget,'function bubbleRowKeyOf(m) {','// F2 行模型→'), context);
+    vm.runInContext(section(widget,'function bubbleRenderCostMods(amount, sessionName) {','// 等待交互提示'), context);
+    const expectedRows=context.bubbleRowsOf(modules).length+1;
+    context.bubbleRenderCostMods(1.23,'需要显示任务完成状态的对话');
+    assert.equal(context.bubbleRowsOf(rendered).length,expectedRows,'completion title must not merge unrelated content into one oversized line');
+  }
+});
+
 test('opening and closing the desktop menu never replays saved size or anchors', () => {
   for (const desktop of [true, false]) {
     let reads = 0;

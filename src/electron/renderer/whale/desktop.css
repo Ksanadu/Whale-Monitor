@@ -8,8 +8,8 @@ html, body { margin: 0; width: 100%; height: 100%; background: transparent; over
   font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif !important;
   -webkit-font-smoothing: antialiased;
 }
-.dshwv-text.whale-local-usage:not(.dshwv-textsafe) { width: 48%; height: 42%; }
-.dshwv-text.whale-local-usage.dshwv-textsafe { height: var(--whale-safe-height, 42%) !important; }
+.dshwv-text.whale-fit-card:not(.dshwv-textsafe) { width: 48%; height: 42%; }
+.dshwv-text.whale-fit-card.dshwv-textsafe { height: var(--whale-safe-height, 42%) !important; }
 .dshwv-text.whale-local-usage .dshwv-trow {
   font-family: Consolas, "Microsoft YaHei UI", monospace !important;
   white-space: nowrap !important;
@@ -20,3 +20,16 @@ html, body { margin: 0; width: 100%; height: 100%; background: transparent; over
   margin: calc(var(--dshw-u) * 2 * var(--whale-usage-fit, 1)) 0;
 }
 .dshwv-text.whale-local-usage .dshwv-trowtx { font-family: Consolas, "Microsoft YaHei UI", monospace !important; }
+.dshwv-text.whale-system-message .dshwv-trow {
+  white-space: normal !important;
+  max-width: calc(100% - 8px) !important;
+  min-width: 0;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+  line-height: 1.18;
+  margin: calc(var(--dshw-u) * 2 * var(--whale-usage-fit, 1)) 0;
+}
+.dshwv-text.whale-system-message .dshwv-mimg {
+  max-width: min(100%, calc(var(--dshw-u) * 540 * var(--whale-usage-fit, 1))) !important;
+  max-height: calc(var(--dshw-u) * 300 * var(--whale-usage-fit, 1)) !important;
+}

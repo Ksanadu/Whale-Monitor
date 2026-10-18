@@ -54,7 +54,7 @@ function sync() {
   let editing = false;
   const root = document.querySelector('.dshwv-root');
   if (root) {
-    for (const card of root.querySelectorAll('.dshwv-pop-open .whale-local-usage')) {
+    for (const card of root.querySelectorAll('.dshwv-pop-open .whale-fit-card')) {
       window.whaleLocalUsage?.fitCard(card);
     }
     const menu = document.querySelector('.dshwv-menuview');
