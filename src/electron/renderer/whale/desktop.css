@@ -1,0 +1,4 @@
+html, body { margin: 0; width: 100%; height: 100%; background: transparent; overflow: hidden; font-family: 'Microsoft YaHei UI', sans-serif; }
+#root { display: none; }
+.whale-monitor-links { display: flex; gap: 6px; padding: 8px 0; }
+.whale-monitor-links button { flex: 1; border: 1px solid #c6d3ed; border-radius: 8px; background: #edf3ff; color: #203170; padding: 8px 4px; cursor: pointer; font: inherit; }

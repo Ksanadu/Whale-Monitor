@@ -1,3 +1,9 @@
+# Whale Monitor · 独立小鲸鱼桌宠
+
+本 fork 的独立 Windows 桌面版请看 [小鲸鱼使用与打包说明](README.whale.md)；无需 DSH 后端，保留小鲸鱼外观与交互，复用 Token Monitor 的本地采集与统计。以下保留 Token Monitor 上游文档。
+
+---
+
 <p align="right">
    <strong>EN</strong> | <a href="./README.zh-CN.md">简</a> | <a href="./README.zh-TW.md">繁</a> | <a href="./README.ko.md">KO</a> | <a href="./README.ja.md">JA</a> | <a href="./README.pt-BR.md">PT</a>
 </p>

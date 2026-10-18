@@ -6,6 +6,9 @@ const os = require('node:os');
 const path = require('node:path');
 const { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, Notification, powerMonitor, screen, session, shell, systemPreferences } = require('electron');
 const { autoUpdater } = require('electron-updater');
+const {createWhaleDesktop, WHALE_CSP} = require('./whale/controller');
+const WHALE_DESKTOP = process.env.WHALE_DESKTOP === '1';
+let whaleDesktop = null;
 const { defaultDeviceId, generateHubSecret, lanIpv4Addresses, loadDotEnv, pidFilePath, readJson, sharedDataDir } = require('../shared/config');
 const {
   CredentialStore,
@@ -469,7 +472,7 @@ const { isLightHex } = require('./renderer/themePresets');
 
 if (!app.isPackaged) loadDotEnv();
 
-const APP_NAME = 'Token Monitor';
+const APP_NAME = WHALE_DESKTOP ? 'Whale Monitor' : 'Token Monitor';
 const APP_ICON_PATH = path.join(__dirname, '..', '..', 'assets', 'icon.png');
 const WINDOWS_APP_ICON_PATH = path.join(__dirname, '..', '..', 'assets', 'icon-win.png');
 
@@ -484,6 +487,7 @@ const WINDOWS_APP_ICON_PATH = path.join(__dirname, '..', '..', 'assets', 'icon-w
 // unpackaged run has no icon of ours inside electron.exe to inherit, so it names
 // the same full-bleed artwork the installer is built from.
 function appWindowIcon() {
+  if (WHALE_DESKTOP) return {icon: path.join(__dirname, 'whale', 'vendor', 'icon.png')};
   if (process.platform !== 'win32') return { icon: APP_ICON_PATH };
   return app.isPackaged ? {} : { icon: WINDOWS_APP_ICON_PATH };
 }
@@ -546,7 +550,7 @@ const diagnosticJournal = createDiagnosticJournal();
 const recoverMacWidgetLaunchServicesRegistration = createMacWidgetLaunchServicesRecovery();
 
 app.setName(APP_NAME);
-if (process.platform === 'win32') app.setAppUserModelId('com.javis.tokenmonitor');
+if (process.platform === 'win32') app.setAppUserModelId(WHALE_DESKTOP ? 'com.ksanadu.whalemonitor' : 'com.javis.tokenmonitor');
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) app.exit(0);
@@ -5060,7 +5064,7 @@ function updateTrayDisplay() {
   if (trayShowsTitle(process.platform)) tray.setTitle(text);
   // Tooltip always shows a useful summary, even in icon-only mode where setTitle is blank.
   const tip = formatTrayText(visibleStats, 'both', currency, compactOptions);
-  tray.setToolTip(`Token Monitor - ${tip}`);
+  tray.setToolTip(`${APP_NAME} - ${tip}`);
   // Icon: rendered bars image in bar modes, otherwise the app icon.
   let icon = null;
   if (barsImageMode || trayImageMode || customImageMode) {
@@ -6357,13 +6361,16 @@ function configureWindowToggleShortcut() {
 }
 
 function ensureTray() {
-  if (!shouldCreateTray(settings)) return false;
+  if (!WHALE_DESKTOP && !shouldCreateTray(settings)) return false;
   if (tray && !tray.isDestroyed()) return;
   tray = createTray({
+    onToggleWhale: () => whaleDesktop?.toggle(),
     getMenuState: () => {
       const codex = trayCodexMenuState();
       return {
         appVersion: appVersion(),
+        whaleDesktop: WHALE_DESKTOP,
+        whaleVisible: whaleDesktop?.isVisible() === true,
         locale: trayMenuLocale(),
         refreshing: trayRefreshInFlight,
         trayContent: settings?.trayContent || 'tokens',
@@ -6453,7 +6460,7 @@ function exitTrayMode() {
     mainWindow.show();
     restoreWindowMaximized(mainWindow, settings);
   }
-  if (!shouldCreateTray(settings)) destroyTray();
+  if (!WHALE_DESKTOP && !shouldCreateTray(settings)) destroyTray();
   else ensureTray();
 }
 
@@ -7036,6 +7043,7 @@ function sendAppUpdatePush() {
 }
 
 async function runAppUpdateCheck({ force = false, bypassCooldown = false } = {}) {
+  if (WHALE_DESKTOP) return {supported: false, error: 'Whale Monitor 请从本维护仓库更新'};
   // An outstanding install owns the updater until the guard is idle again.
   // electron-updater reports a failed check by emitting on the same global 'error'
   // event an install failure arrives on -- checkForUpdates() emits there and
@@ -7163,6 +7171,7 @@ function dismissAppUpdateVersion(version) {
 }
 
 async function downloadAndPrepareAppUpdate() {
+  if (WHALE_DESKTOP) return {ok: false, error: '独立版不安装上游 Token Monitor 更新'};
   const support = appUpdateInstallSupport({ isPackaged: app.isPackaged, platform: process.platform, env: process.env });
   if (!support.supported) {
     setNativeAppUpdateState({ phase: 'error', error: support.reason || 'unsupported-platform', progress: null });
@@ -7217,6 +7226,7 @@ async function downloadAndPrepareAppUpdate() {
 }
 
 async function installDownloadedAppUpdate() {
+  if (WHALE_DESKTOP) return {ok: false, error: '独立版不安装上游 Token Monitor 更新'};
   // The other half of the same rule. Refusing new operations during the install
   // only holds the boundary if nothing was already running when it started, and a
   // check begun a moment earlier would still be reporting on the shared event.
@@ -7338,7 +7348,8 @@ function loadWindowFile(target, options = {}) {
     reveal();
   });
   const filePath = path.join(__dirname, 'renderer', 'index.html');
-  const load = options.query ? target.loadFile(filePath, { query: options.query }) : target.loadFile(filePath);
+  const query = {...options.query, ...(WHALE_DESKTOP ? {whaleDesktop: '1'} : {})};
+  const load = target.loadFile(filePath, {query});
   load.catch((error) => {
     console.log(`[window] renderer load failed: ${error.message}`);
     reveal();
@@ -7450,6 +7461,7 @@ function createWindow(boundsOverride, options = {}) {
   win.on('minimize', stopTaskbarZOrderKeeper);
   win.on('close', (event) => {
     if (quitRequested) return;
+    if (WHALE_DESKTOP) { event.preventDefault(); win.hide(); return; }
     const action = mainWindowCloseAction(settings, { platform: process.platform });
     if (action === 'hidePopover') {
       event.preventDefault();
@@ -7677,7 +7689,7 @@ function rebuildWindow() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   if (process.platform === 'darwin' && app.dock) app.dock.setIcon(APP_ICON_PATH);
   ensureSettingsLoaded();
   powerMonitor.on('lock-screen', () => notchController?.setLocked(true));
@@ -7715,11 +7727,17 @@ app.whenReady().then(() => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': [CSP_HEADER]
+        'Content-Security-Policy': [WHALE_DESKTOP && details.url.startsWith('whale://app/') ? WHALE_CSP : CSP_HEADER]
       }
     });
   });
   applyMacActivationPolicy();
+  if (WHALE_DESKTOP) {
+    whaleDesktop = await createWhaleDesktop({app, BrowserWindow, ipcMain, protocol: require('electron').protocol,
+      screen, shell, getStats: () => latestStats,
+      openMonitor: () => { if (!mainWindow || mainWindow.isDestroyed()) createWindow(); showWindow(mainWindow); },
+      logger: message => console.warn('[whale]', message)});
+  }
   createWindow();
   syncLoginItemSettingFromOs();
   configureWindowToggleShortcut();
@@ -9490,7 +9508,7 @@ app.whenReady().then(() => {
     }
   });
   scheduleStartupAppUpdateCheck();
-  startAppUpdateBackgroundChecks();
+  if (!WHALE_DESKTOP) startAppUpdateBackgroundChecks();
 });
 
 app.on('second-instance', focusExistingWindow);
@@ -9501,6 +9519,7 @@ app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(
 // OS-initiated logout or restart on macOS.
 app.on('before-quit', () => {
   quitRequested = true;
+  whaleDesktop?.dispose();
   antigravityOAuthLoginController?.abort();
   workbuddyManagedAccountService?.cancelLogin();
   resetMacWidgetReloadThrottle();

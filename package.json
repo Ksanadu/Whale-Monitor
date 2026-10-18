@@ -3,7 +3,7 @@
   "productName": "Token Monitor",
   "version": "0.74.0",
   "description": "Live token & cost widget for Claude Code, Codex & Hermes — local-first, optional multi-device sync.",
-  "main": "src/electron/main.js",
+  "main": "src/electron/whale/entry.js",
   "scripts": {
     "start": "npm run ensure:tokscale && electron .",
     "hub": "node src/hub/server.js",
@@ -32,7 +32,10 @@
     "verify:release-artifact-names": "node scripts/verify-updater-artifact-names.js dist",
     "benchmark:hub-bandwidth": "node scripts/benchmark-hub-bandwidth.js",
     "lint": "eslint .",
-    "verify": "npm run lint && npm test"
+    "verify": "npm run lint && npm test",
+    "dist:whale:win": "npm run ensure:tokscale -- --platform=win32-x64 && electron-builder --config scripts/whale-builder.config.js --win --x64 --publish never",
+    "monitor": "electron . --token-monitor",
+    "test:whale": "node --test tests/electron/whale*.test.js"
   },
   "build": {
     "appId": "com.javis.tokenmonitor",
@@ -144,11 +147,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Javis603/token-monitor.git"
+    "url": "git+https://github.com/Ksanadu/token-monitor.git"
   },
-  "homepage": "https://github.com/Javis603/token-monitor#readme",
+  "homepage": "https://github.com/Ksanadu/token-monitor",
   "bugs": {
-    "url": "https://github.com/Javis603/token-monitor/issues"
+    "url": "https://github.com/Ksanadu/token-monitor/issues"
   },
   "dependencies": {
     "@xhayper/discord-rpc": "^1.3.4",

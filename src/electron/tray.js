@@ -354,6 +354,7 @@ function buildTrayMenuTemplate(options = {}) {
     };
   })() : null;
   return [
+    ...(state.whaleDesktop ? [{label: state.whaleVisible ? '隐藏小鲸鱼' : '显示小鲸鱼', click: callback('onToggleWhale')}, {type: 'separator'}] : []),
     {
       label: t(state.refreshing ? 'trayMenu.refreshing' : 'trayMenu.refreshNow'),
       enabled: !state.refreshing,
@@ -440,6 +441,7 @@ function createTray({
   onSwitchCodexAccount,
   onToggle,
   getWindowVisible,
+  onToggleWhale,
   onMouseDown,
   onCancelMouseDown,
   platform = process.platform,
@@ -447,13 +449,14 @@ function createTray({
 }) {
   const { Tray, Menu, nativeImage } = electron;
   const tray = new Tray(buildTrayIcon({ platform, nativeImage }));
-  tray.setToolTip('Token Monitor');
+  tray.setToolTip(getMenuState?.().whaleDesktop ? 'Whale Monitor' : 'Token Monitor');
 
   const menuState = () => (typeof getMenuState === 'function' ? getMenuState() : {});
   const buildMenu = (state = menuState()) => Menu.buildFromTemplate(buildTrayMenuTemplate({
     state,
     platform,
     onOpenSettings,
+    onToggleWhale,
     onOpenView,
     onQuit,
     onRefresh,

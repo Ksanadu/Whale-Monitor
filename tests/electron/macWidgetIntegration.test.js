@@ -262,7 +262,7 @@ test('Widget demand gate, startup arm and quit stop are wired into the snapshot 
   );
   assert.match(demandSource, /macWidgetDemand\.start\(\);/);
 
-  const readyStart = mainSource.indexOf('app.whenReady().then(() => {');
+  const readyStart = mainSource.search(/app\.whenReady\(\)\.then\((?:async )?\(\) => \{/);
   const readyEnd = mainSource.indexOf("ipcMain.handle('settings:get'", readyStart);
   const readySource = mainSource.slice(readyStart, readyEnd);
   assert.match(readySource, /ensureMacWidgetDemand\(\);\s*startMode\(\);/);
@@ -274,7 +274,7 @@ test('Widget demand gate, startup arm and quit stop are wired into the snapshot 
 });
 
 test('starts the runtime immediately and holds only Widget publication until host registration settles', () => {
-  const readyStart = mainSource.indexOf('app.whenReady().then(() => {');
+  const readyStart = mainSource.search(/app\.whenReady\(\)\.then\((?:async )?\(\) => \{/);
   const readyEnd = mainSource.indexOf("ipcMain.handle('settings:get'", readyStart);
   assert.ok(readyStart >= 0 && readyEnd > readyStart, 'ready callback should exist');
   const readySource = mainSource.slice(readyStart, readyEnd);
