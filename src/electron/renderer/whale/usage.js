@@ -7,7 +7,7 @@
 
   function defaultModules() {
     return [
-      {type: 'text', text: '今日Token', size: 8, bold: true, color: '#536ba9'},
+      {type: 'text', text: '今日Token', size: 9, bold: true, color: '#536ba9'},
       {type: 'today', tpl: '{local_today_count}', size: 18, rgb: 'indigo'}
     ].map(module => ({...module, fontFamily}));
   }
@@ -39,7 +39,8 @@
     ].map(module => ({...module, fontFamily: previousFontFamily}));
     const previousTokenOnly = [{type: 'today', tpl: '{local_today_tokens}', size: 8, rgb: 'indigo', fontFamily: previousFontFamily}];
     const previousLabeled = [{type: 'today', tpl: '今日Token用量：{local_today_count}', size: 8, rgb: 'indigo', fontFamily}];
-    if (first?.kind !== 'custom' || ![originalModules, previousUsage, previousTypography, previousTokenOnly, previousLabeled].some(modules => saved === JSON.stringify(modules))) return items;
+    const previousTwoRows = defaultModules().map((module, index) => index === 0 ? {...module, size: 8} : module);
+    if (first?.kind !== 'custom' || ![originalModules, previousUsage, previousTypography, previousTokenOnly, previousLabeled, previousTwoRows].some(modules => saved === JSON.stringify(modules))) return items;
     return [{...first, modules: defaultModules()}, ...items.slice(1)];
   }
 
