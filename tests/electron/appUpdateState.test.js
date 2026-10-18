@@ -102,7 +102,7 @@ test('a launch checks once after a delay, bypassing the cooldown', () => {
   assert.match(startup, /timer\.unref\?\.\(\)/);
   // Both manual and start-at-login launches take this whenReady tail; the
   // delayed startup check replaces the old immediate cooldown-bound call.
-  assert.match(main, /scheduleStartupAppUpdateCheck\(\);\s*if \(!WHALE_DESKTOP\) startAppUpdateBackgroundChecks\(\);\s*\}\);/);
+  assert.match(main, /if \(WHALE_DESKTOP\) whaleAppUpdater\.start\(\);\s*else \{\s*scheduleStartupAppUpdateCheck\(\);\s*startAppUpdateBackgroundChecks\(\);\s*\}\s*\}\);/);
   assert.doesNotMatch(main, /maybeRunBackgroundUpdateCheck\(\);\s*startAppUpdateBackgroundChecks\(\)/);
 });
 

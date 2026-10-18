@@ -11,9 +11,15 @@
 
 ## 使用
 
-Windows x64 运行便携版 `Whale-Monitor-0.74.0-whale.1-x64-portable.exe`，或安装 `Whale-Monitor-0.74.0-whale.1-x64-nsis.exe`。未配置余额密钥也可查看本机费用估算。费用估算不等于实际账单；原版鲸鱼账本仍单独保留。
+在 [Releases](https://github.com/Ksanadu/Whale-Monitor/releases) 下载 Windows x64 便携版 `Whale-Monitor-<版本>-x64-portable.exe`，或安装 `Whale-Monitor-<版本>-x64-nsis.exe`。未配置余额密钥也可查看本机费用估算。费用估算不等于实际账单；原版鲸鱼账本仍单独保留。
 
-菜单通过右键角色或悬浮时出现的 ☰ 打开。关闭统计窗口会保留桌宠，退出请使用托盘菜单。独立版关闭了上游应用/DSH 插件更新安装入口，请从本 fork 获取更新。
+菜单通过右键角色或悬浮时出现的 ☰ 打开。关闭统计窗口会保留桌宠，退出请使用托盘菜单。
+
+## 自动更新
+
+安装版启动约 15 秒后、运行期间每 5 分钟以及电脑恢复/解锁时检查本仓库的 GitHub Releases。检测到新版本后自动下载并校验安装包，然后静默安装、重启。便携版不会覆盖自身；检测到新版本后自动打开对应 Release 下载页，同一个版本跨重启也只自动打开一次。在「统计与账户 → 设置 → 自动更新」可关闭此行为。
+
+`whale-desktop` 或 `main` 的新提交触发 GitHub Actions，测试和构建成功后自动发布预览版 Release 与更新清单；未完成的构建不会提供给客户端安装。旧 `0.74.0-whale.1` 尚无更新程序，需要手动安装一次支持自动更新的新版本。始终只更新本仓库的 Whale Monitor，不接入 DSH 更新服务。
 
 ## 开发与打包
 
@@ -25,9 +31,10 @@ npm start
 npm run test:whale
 npm run verify
 npm run dist:whale:win
+node scripts/verify-whale-release.js
 ```
 
-产物位于 `dist/whale/`。`npm run monitor` 可运行原版 Token Monitor 界面。详细边界与验证说明见 [桌面版实现说明](docs/whale-desktop.md)。原项目说明保留在 [README.md](README.upstream.md)。
+产物位于 `dist/whale/`，发布时需要同时上传安装包、便携版、`whale.yml`、`latest.yml` 和校验文件。`npm run monitor` 可运行原版 Token Monitor 界面。详细边界与验证说明见 [桌面版实现说明](docs/whale-desktop.md)。原项目说明保留在 [README.md](README.md)。
 
 ## 来源与许可
 

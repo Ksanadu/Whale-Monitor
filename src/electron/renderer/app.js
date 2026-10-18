@@ -1780,7 +1780,7 @@ function renderAutomaticAppUpdateControl() {
   els.automaticAppUpdatesInput.disabled = control.disabled;
   els.automaticAppUpdatesRow?.classList.toggle('is-disabled', control.unavailable);
   if (els.automaticAppUpdatesNote) {
-    els.automaticAppUpdatesNote.textContent = t(control.descriptionKey);
+    els.automaticAppUpdatesNote.textContent = control.description || t(control.descriptionKey);
   }
 }
 

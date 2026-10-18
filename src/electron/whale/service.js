@@ -5,6 +5,7 @@ const path = require('node:path');
 const {Readable} = require('node:stream');
 const {pathToFileURL} = require('node:url');
 const {CredentialStore} = require('../../shared/credentialStore');
+const {VERSION, RELEASES_URL} = require('./releaseInfo');
 
 function createWhaleCredentials(dataDir) {
   const store = new CredentialStore(dataDir);
@@ -85,8 +86,8 @@ async function createWhaleService({dataDir, getStats = () => null, definition}) 
       const pathname = new URL(url, 'http://localhost').pathname;
       // Never advertise/install a DSH plugin update into the standalone app.
       if (pathname === '/dsh-whale/update-check.json') return Response.json({ok: true,
-        current: '0.74.0-whale.1', latest: '0.74.0-whale.1', hasUpdate: false,
-        source: 'https://github.com/Ksanadu/Whale-Monitor'});
+        current: VERSION, latest: VERSION, hasUpdate: false,
+        source: RELEASES_URL});
       const route = routes.get(pathname) || [...routes.values()].find(item => item.kind === 'prefix' && pathname.startsWith(item.path));
       if (!route) return new Response('Not found', {status: 404});
       const bytes = body == null ? Buffer.alloc(0) : Buffer.from(body);

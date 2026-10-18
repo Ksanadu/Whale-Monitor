@@ -9,6 +9,8 @@ const { autoUpdater } = require('electron-updater');
 const {createWhaleDesktop, WHALE_CSP} = require('./whale/controller');
 const WHALE_DESKTOP = process.env.WHALE_DESKTOP === '1';
 let whaleDesktop = null;
+const {createWhaleUpdater, installationKind, initializeWhaleUpdatePreference} = require('./whale/updater');
+let whaleAppUpdater = null;
 const { defaultDeviceId, generateHubSecret, lanIpv4Addresses, loadDotEnv, pidFilePath, readJson, sharedDataDir } = require('../shared/config');
 const {
   CredentialStore,
@@ -6651,6 +6653,7 @@ const updateInstallQuit = createUpdateInstallQuitGuard({
   claim: () => { quitRequested = true; skipForcedQuit = true; },
   release: () => { quitRequested = false; skipForcedQuit = false; },
   onStalled: () => {
+    if (WHALE_DESKTOP) whaleAppUpdater?.reportInstallFailure('自动安装未启动，请重启小鲸鱼后重试，或打开 Release 手动安装。');
     // The bound is far enough out that reaching it means the install genuinely
     // stalled, which is exactly what the user is looking at: they pressed Install
     // and the app neither restarted nor complained. What to do about it depends on
@@ -6664,6 +6667,7 @@ const updateInstallQuit = createUpdateInstallQuitGuard({
     });
   },
   onHandoff: (afterStalledReport) => {
+    if (WHALE_DESKTOP && afterStalledReport) whaleAppUpdater?.noteHandoff();
     // The bound is a decision to stop waiting, not proof the installer is dead, so
     // a hand-off that turns up later withdraws the report rather than leaving the
     // app advising a restart it is about to perform itself.
@@ -6977,6 +6981,7 @@ async function checkAppUpdateProvider() {
 }
 
 function deriveAppUpdateState() {
+  if (WHALE_DESKTOP && whaleAppUpdater) return whaleAppUpdater.getState();
   const block = settings?.appUpdate || {};
   const currentVersion = app.getVersion();
   const latest = latestForCurrentVersion(block.lastKnownLatest || null, currentVersion);
@@ -7043,7 +7048,7 @@ function sendAppUpdatePush() {
 }
 
 async function runAppUpdateCheck({ force = false, bypassCooldown = false } = {}) {
-  if (WHALE_DESKTOP) return {supported: false, error: 'Whale Monitor 请从本维护仓库更新'};
+  if (WHALE_DESKTOP) return whaleAppUpdater?.check({manual: force}) || deriveAppUpdateState();
   // An outstanding install owns the updater until the guard is idle again.
   // electron-updater reports a failed check by emitting on the same global 'error'
   // event an install failure arrives on -- checkForUpdates() emits there and
@@ -7171,7 +7176,7 @@ function dismissAppUpdateVersion(version) {
 }
 
 async function downloadAndPrepareAppUpdate() {
-  if (WHALE_DESKTOP) return {ok: false, error: '独立版不安装上游 Token Monitor 更新'};
+  if (WHALE_DESKTOP) return whaleAppUpdater?.check({manual: true, installRequested: true}) || deriveAppUpdateState();
   const support = appUpdateInstallSupport({ isPackaged: app.isPackaged, platform: process.platform, env: process.env });
   if (!support.supported) {
     setNativeAppUpdateState({ phase: 'error', error: support.reason || 'unsupported-platform', progress: null });
@@ -7226,7 +7231,7 @@ async function downloadAndPrepareAppUpdate() {
 }
 
 async function installDownloadedAppUpdate() {
-  if (WHALE_DESKTOP) return {ok: false, error: '独立版不安装上游 Token Monitor 更新'};
+  if (WHALE_DESKTOP) return whaleAppUpdater?.install() || deriveAppUpdateState();
   // The other half of the same rule. Refusing new operations during the install
   // only holds the boundary if nothing was already running when it started, and a
   // check begun a moment earlier would still be reporting on the shared event.
@@ -7290,6 +7295,7 @@ function isAllowedExternalUrl(value) {
   if (parsed.hostname === 'github.com' && parsed.pathname.startsWith('/junhoyeo/tokscale')) return true;
   if (parsed.hostname === 'www.npmjs.com' && parsed.pathname.startsWith('/package/@tokscale/')) return true;
   if (parsed.hostname === 'github.com' && parsed.pathname.startsWith('/Javis603/token-monitor')) return true;
+  if (parsed.hostname === 'github.com' && (parsed.pathname === '/Ksanadu/Whale-Monitor' || parsed.pathname.startsWith('/Ksanadu/Whale-Monitor/'))) return true;
   if (parsed.hostname === 'codex-resets.com' && (parsed.pathname === '' || parsed.pathname === '/')) return true;
   if (
     (parsed.hostname === 'javis-ai.com' || parsed.hostname === 'www.javis-ai.com')
@@ -7692,6 +7698,20 @@ function rebuildWindow() {
 app.whenReady().then(async () => {
   if (process.platform === 'darwin' && app.dock) app.dock.setIcon(APP_ICON_PATH);
   ensureSettingsLoaded();
+  if (WHALE_DESKTOP) {
+    // Earlier standalone builds exposed an inactive, unchecked upstream setting.
+    // Migrate once; subsequent explicit opt-outs remain persistent.
+    if (initializeWhaleUpdatePreference(settings)) saveSettings();
+    updateHandoffObserved = observeUpdateInstallHandoff(require('electron').autoUpdater, () => updateInstallQuit.noteHandoff());
+    whaleAppUpdater = createWhaleUpdater({currentVersion: app.getVersion(),
+      mode: installationKind({isPackaged: app.isPackaged}), dataDir: app.getPath('userData'),
+      fetcher: (...args) => net.fetch(...args), openExternal: url => shell.openExternal(url),
+      isAutomatic: () => settings.automaticAppUpdates === true,
+      beforeInstall: () => updateInstallQuit.request(), installFailed: () => updateInstallQuit.abort(),
+      onChange: () => sendAppUpdatePush(), logger: message => console.warn(message)});
+    powerMonitor.on('resume', () => void whaleAppUpdater.check());
+    powerMonitor.on('unlock-screen', () => void whaleAppUpdater.check());
+  }
   powerMonitor.on('lock-screen', () => notchController?.setLocked(true));
   powerMonitor.on('unlock-screen', () => notchController?.setLocked(false));
   // Switching the OS between light and dark repaints the taskbar underneath an
@@ -9507,8 +9527,11 @@ app.whenReady().then(async () => {
       createWindow();
     }
   });
-  scheduleStartupAppUpdateCheck();
-  if (!WHALE_DESKTOP) startAppUpdateBackgroundChecks();
+  if (WHALE_DESKTOP) whaleAppUpdater.start();
+  else {
+    scheduleStartupAppUpdateCheck();
+    startAppUpdateBackgroundChecks();
+  }
 });
 
 app.on('second-instance', focusExistingWindow);
@@ -9520,6 +9543,7 @@ app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(
 app.on('before-quit', () => {
   quitRequested = true;
   whaleDesktop?.dispose();
+  whaleAppUpdater?.stop();
   antigravityOAuthLoginController?.abort();
   workbuddyManagedAccountService?.cancelLogin();
   resetMacWidgetReloadThrottle();

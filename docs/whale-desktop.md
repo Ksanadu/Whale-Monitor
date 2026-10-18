@@ -20,7 +20,19 @@ Windows 使用工作区大小的透明窗口和原生 setShape，将可见角色
 
 ## 构建与验证
 
-`scripts/whale-builder.config.js` 独立设置应用 id、名称、版本、图标、安装目录身份与便携/NSIS 产物。保留根包上游元数据，避免影响原有 Worker/macOS 发布脚本。独立版阻止上游应用更新下载安装，也不检查 DSH npm 插件更新。
+`scripts/whale-builder.config.js` 独立设置应用 id、名称、版本、图标、安装目录身份与便携/NSIS 产物。保留根包上游元数据，避免影响原有 Worker/macOS 发布脚本。独立更新只指向本仓库，仍不检查 DSH npm 插件更新。
+
+## 自动更新与发布
+
+`whale/updater.js` 在主进程检查 GitHub Releases。启动延迟 15 秒，之后每 5 分钟以及系统恢复/解锁时检查。只考虑已发布、有对应版本的两个 Windows 程序附件的 Release；安装版还要求 `whale.yml` 已上传。比较 SemVer，包含本项目的 whale 预览版，不降级。原始提交不能执行，必须先由 Actions 构建成完整 Release。
+
+NSIS 的 `customInstall` 在安装目录写入绑定本应用 id 的 `whale-installation.json`；只有带此标记的安装版才能自动安装。便携环境变量始终优先，解压目录和开发运行不会误装。便携版只打开固定仓库对应 Release URL，已自动打开的版本记在独立数据目录的 `whale-updates.json`，跨重启去重；浏览器打开失败可重试。
+
+安装版复用 electron-updater 的 NsisUpdater，将 manifest 固定到已选择的 Release tag。先检查版本、安装包名、大小和 SHA-512 格式，再由更新器验证下载内容。禁止 Web installer 和差分下载；下载失败不退出应用。校验后通过原有更新退出交接机制静默安装并重启；安装失败/超时不会在当前进程反复启动安装器。当前发行包没有 Authenticode 证书，构建配置关闭证书名校验；更新来源由固定 GitHub HTTPS 地址和发布清单 SHA-512 约束。签名发行后应启用证书校验。
+
+`automaticAppUpdates` 在旧独立版首次升级时迁移为开启，`whaleUpdatesConfigured` 标记后续不再覆盖用户选择。设置界面中的自动更新开关同时控制安装版自动安装与便携版自动打开网页。
+
+`.github/workflows/whale-release.yml` 仅在本 fork 的 `whale-desktop`/`main` 提交及手动触发时发布。版本使用 `0.74.0-whale.<run_number+2>`，不提交版本号避免循环构建。发布前执行 lint、桌宠/更新相关回归、Windows 打包及 SHA-512/大小检查，所有附件先上传草稿，再公开发布，避免客户端看到半成品。`WHALE_BUILD_VERSION` 只改变打包元数据，不改上游共享包版本。
 
 新增回归覆盖：独立设置与资源接口、凭据隔离、失败/取消不通知、USD 与 CNY 预算分离、启动静默、尾部半条记录、截断后的重新计序、版本化日志、子智能体及无服务器 worker。
 

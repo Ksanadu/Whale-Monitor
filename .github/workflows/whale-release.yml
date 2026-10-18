@@ -1,0 +1,59 @@
+name: Whale Windows Release
+
+on:
+  push:
+    branches: [whale-desktop, main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: whale-windows-release
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    if: github.repository == 'Ksanadu/Whale-Monitor'
+    runs-on: windows-latest
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      ELECTRON_BUILDER_COMPRESSION_LEVEL: '5'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Set increasing desktop version
+        shell: pwsh
+        run: |
+          $version = "0.74.0-whale.$([int]$env:GITHUB_RUN_NUMBER + 2)"
+          "WHALE_BUILD_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - run: npm ci
+      - run: npm run lint
+      - name: Verify desktop and updater regressions
+        run: node --test tests/electron/whale*.test.js tests/electron/appUpdateState.test.js tests/electron/appUpdatePresentation.test.js tests/electron/updateInstallQuit.test.js tests/electron/tray.test.js
+      - run: npm run dist:whale:win
+      - name: Verify installer hashes and update channels
+        run: node scripts/verify-whale-release.js
+      - name: Publish complete release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = $env:WHALE_BUILD_VERSION
+          $tag = "v$version"
+          $repo = $env:GITHUB_REPOSITORY
+          $notes = "Windows x64 独立小鲸鱼桌宠。安装版自动校验并安装更新，便携版检测到新版本后打开下载页。`n`n源提交：$env:GITHUB_SHA`n`n首次使用自动更新需手动安装本版本。详见仓库 README.whale.md。"
+          $notes | Set-Content -Path release-notes.txt -Encoding utf8
+          $assets = @(
+            "dist/whale/Whale-Monitor-$version-x64-nsis.exe",
+            "dist/whale/Whale-Monitor-$version-x64-portable.exe",
+            "dist/whale/Whale-Monitor-$version-x64-nsis.exe.blockmap",
+            'dist/whale/whale.yml', 'dist/whale/latest.yml', 'dist/whale/SHA256SUMS.txt'
+          )
+          gh release create $tag --repo $repo --target $env:GITHUB_SHA --title "Whale Monitor $version" --prerelease --draft --notes-file release-notes.txt @assets
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          gh release edit $tag --repo $repo --draft=false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
