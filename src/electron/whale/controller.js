@@ -59,7 +59,7 @@ async function createWhaleDesktop({app, BrowserWindow, ipcMain, protocol, screen
           body: ['GET', 'HEAD'].includes(request.method) ? null : Buffer.from(await request.arrayBuffer())}));
       } catch (error) { logger(error.message); return new Response('Local operation failed', {status: 500}); }
     }
-    const files = {'/': 'index.html', '/desktop/desktop.js': 'desktop.js', '/desktop/desktop.css': 'desktop.css'};
+    const files = {'/': 'index.html', '/desktop/desktop.js': 'desktop.js', '/desktop/desktop.css': 'desktop.css', '/desktop/usage.js': 'usage.js'};
     const file = files[url.pathname];
     if (!file || request.method !== 'GET') return new Response('Not found', {status: 404});
     const types = {'.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8'};

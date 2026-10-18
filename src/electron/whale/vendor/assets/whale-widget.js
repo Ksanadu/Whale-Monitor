@@ -7956,10 +7956,11 @@ var bubbleMask = null
 var bubbleEditItems = [] // [{kind, modules?}...]; [0]=首次点击, 其余=再次点击
 var bubbleMoreListEl = null
 var bubbleFirstChipEl = null
-var BUBBLE_KIND_LABEL = { normal: '余额内容', random: '随机语句', custom: '自定义内容' }
+var BUBBLE_KIND_LABEL = { normal: window.whaleDesktop ? '今日本机用量' : '余额内容', random: '随机语句', custom: '自定义内容' }
 // v209 默认泡泡内容 = 与开发者当前线上生效配置一致(全新安装/恢复默认时即此体验)
 // —— 首次点击:标题文本 + 总余额 + 今日已用 + 峰谷时段
 function bubbleDefaultFirstModules() {
+  if (window.whaleDesktop) return window.whaleLocalUsage.defaultModules()
   // v630:normal/首次 兜底默认 = v615 冻结出厂默认第 1 泡(靛蓝余额卡 5 模块),与「恢复默认」一致;
   // 以下旧体(macaron 版)仅在常量缺失时作兜底参照,不再作为默认内容
   try {
@@ -8833,7 +8834,11 @@ var BUBBLE_DEFAULT_ITEMS = [
 ];
 
 function bubbleParseDefaultItems() {
-  try { return JSON.parse(JSON.stringify(BUBBLE_DEFAULT_ITEMS)) } catch (err) { return [] }
+  try {
+    var items = JSON.parse(JSON.stringify(BUBBLE_DEFAULT_ITEMS))
+    if (window.whaleDesktop) items[0].modules = bubbleDefaultFirstModules()
+    return items
+  } catch (err) { return [] }
 }
 
 // —— 默认队列 = 首次点击 + 第2次点击(全新安装无配置时的体验)
@@ -9765,7 +9770,7 @@ function closeBubbleEditor() {
   try { frameMenuCloseAll() } catch (err) {}
 }
 function bubbleEditorReset() {
-  showConfirm('恢复为默认序列(首次=余额内容,再次=随机语句)?', function () {
+  showConfirm(window.whaleDesktop ? '恢复为默认序列(首次=今日本机用量,再次=随机语句)?' : '恢复为默认序列(首次=余额内容,再次=随机语句)?', function () {
     bubbleEditItems = bubbleDefaultQueue()
     renderBubbleEditor()
   })
@@ -13845,7 +13850,7 @@ var textBox = document.createElement('div')
 textBox.className = 'dshwv-text'
 var labelEl = document.createElement('div')
 labelEl.className = 'dshwv-label'
-labelEl.textContent = 'DeepSeek 余额'
+labelEl.textContent = window.whaleDesktop ? '今日本机用量' : 'DeepSeek 余额'
 var amountEl = document.createElement('div')
 amountEl.className = 'dshwv-amount'
 var hintEl = document.createElement('div')
@@ -14032,6 +14037,7 @@ var state = {
   bonusBalance: null,
   rechargeBalance: null,
   todayUsage: null,
+  todayTokens: null,
   todayUsageCurrency: 'CNY',
   usageLabel: '本地估算',
   isPeak: false,
@@ -14262,7 +14268,7 @@ function restoreBubbleLines() {
   // 后续 setHint 首次直写分支不碰 opacity → 今日已用整行透明消失。
   labelEl.style.display = ''
   labelEl.className = 'dshwv-label'
-  labelEl.textContent = 'DeepSeek 余额'
+  labelEl.textContent = window.whaleDesktop ? '今日本机用量' : 'DeepSeek 余额'
   labelEl.style.color = ''
   labelEl.style.opacity = ''
   amountEl.style.display = ''
@@ -17033,6 +17039,7 @@ function bubbleLibDel(id) {
 function applyBubbleCfgSeq() {
   try {
     if (!bubbleCfg || !Array.isArray(bubbleCfg.items) || !bubbleCfg.items.length) return
+    if (window.whaleDesktop) bubbleCfg.items = window.whaleLocalUsage.migrateFirst(bubbleCfg.items, BUBBLE_DEFAULT_ITEMS[0].modules)
     // v815：框库随配置一起同步（老配置没有 frames ⇒ 走内置经典框）
     try { syncFramesFromCfg() } catch (err) {}
     var seq = []
@@ -17842,6 +17849,7 @@ function bubbleContentTokenMap(m) {
   } else if (m.type === 'today') {
     v = (state.todayUsage !== null && state.todayUsage !== undefined ? fmt(state.todayUsage, state.todayUsageCurrency || state.currency) : '--')
     map['expense_ds'] = v
+    if (window.whaleDesktop) map['local_today_tokens'] = window.whaleLocalUsage.tokensText(state.todayTokens)
   } else if (m.type === 'session') {
     // v768：对话名模块 —— {session} = 当前对话标题（按模块的「保留长度」截断）
     map['session'] = bubbleSessionText(m)
@@ -17879,7 +17887,10 @@ function bubbleTplHelpItems(m) {
   if (m.type === 'balance') add('balance_ds', '总余额(充值金额+赠金)')
   if (m.type === 'bonus') add('bonus_ds', '赠金余额（未过期的赠送余额；取不到显示 —）')
   if (m.type === 'recharge') add('recharge_ds', '充值余额（不含赠金；取不到显示 —）')
-  else if (m.type === 'today') add('expense_ds', '今日已用金额')
+  else if (m.type === 'today') {
+    add('expense_ds', '今日已用金额')
+    if (window.whaleDesktop) add('local_today_tokens', '今日本机所有已识别客户端的 Token 合计')
+  }
   else if (m.type === 'session') add('session', '当前对话名（超过「保留长度」会截断为 前N字...）')
   else if (m.type === 'peak' || m.type === 'nextpeak') {
     if (bubbleIsPeakCount(m)) add('countdown', '距下一时段倒计时 (HH:MM:SS)')
@@ -19270,6 +19281,7 @@ function refresh(manual) {
         state.message = ''
         balanceRetryLeft = 2
         state.todayUsage = data.todayUsage !== undefined ? data.todayUsage : null
+        state.todayTokens = data.todayTokens !== undefined ? data.todayTokens : null
         state.todayUsageCurrency = data.todayUsageCurrency || data.currency || 'CNY'
         // v781：赠金 / 充值余额（宿主两条路都下发；缺失给 null ⇒ 模块显示 —）
         state.bonusBalance = isFinite(Number(data.bonusBalance)) ? Number(data.bonusBalance) : null

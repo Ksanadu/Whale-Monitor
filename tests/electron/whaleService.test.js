@@ -37,6 +37,10 @@ test('standalone whale mounts original UI, image, resource editors and independe
   for (const route of ['roles.json', 'audio.json', 'bubble.json', 'usage-settings.json']) {
     assert.equal((await service.request('/dsh-whale/' + route)).status, 200, route);
   }
+  const pending = await json('/dsh-whale/balance.json');
+  assert.equal(pending.ok, true);
+  assert.equal(pending.todayUsage, null);
+  assert.equal(pending.todayTokens, null);
   assert.equal((await service.request('/../../credentials.json')).status, 404);
 });
 
@@ -68,12 +72,20 @@ test('local accounting keeps failures but completion snapshot only reports succe
 });
 
 test('Token Monitor usage projection does not mutate its immutable snapshot', () => {
-  const stats = Object.freeze({periods: Object.freeze({today: Object.freeze({costUsd: 1.25})})});
+  const stats = Object.freeze({periods: Object.freeze({today: Object.freeze({costUsd: 1.25, totalTokens: 1234567})})});
   const result = usageProjection({totalBalance: 42, todayUsage: 0.1}, stats);
   assert.equal(result.todayUsage, 1.25); assert.equal(result.todayUsageCurrency, 'USD');
   assert.equal(result.totalBalance, 42);
+  assert.equal(result.todayTokens, 1234567);
+  assert.equal(usageProjection({}, {periods: {today: {costUsd: 0, totalTokens: 0}}}).todayTokens, 0);
+  assert.equal(usageProjection({}, {periods: {today: {costUsd: 0}}}).todayTokens, null);
+  assert.equal(usageProjection({}, {periods: {today: {costUsd: 0, totalTokens: NaN}}}).todayTokens, null);
   assert.equal(result.budgetUsage, 0.1, 'original CNY budgets keep their own ledger');
-  assert.deepEqual(usageProjection({ok: false}, null), {ok: false});
+  const pending = usageProjection({ok: false, todayUsage: 0.1}, null);
+  assert.equal(pending.todayUsage, null, 'pending local totals must not display the DS ledger as global cost');
+  assert.equal(pending.todayTokens, null);
+  assert.equal(pending.budgetUsage, 0.1);
+  assert.equal(pending.todayUsageCurrency, 'USD');
 });
 
 test('native regions reject malformed input and clip mixed-DPI logical bounds', () => {
@@ -94,10 +106,11 @@ test('other renderer origins cannot use the local whale protocol or permissive v
 });
 
 test('no balance key is needed for local statistics and upstream plugin updates are disabled', async t => {
-  const {json} = await fixture(t, {getStats: () => ({periods: {today: {costUsd: 3}}})});
+  const {json} = await fixture(t, {getStats: () => ({periods: {today: {costUsd: 3, totalTokens: 777}}})});
   const balance = await json('/dsh-whale/balance.json');
   assert.equal(balance.ok, true); assert.equal(balance.localUsageOnly, true);
   assert.equal(balance.totalBalance, null); assert.equal(balance.todayUsageCurrency, 'USD');
+  assert.equal(balance.todayTokens, 777);
   const update = await json('/dsh-whale/update-check.json');
   assert.equal(update.hasUpdate, false);
   assert.equal(update.source, 'https://github.com/Ksanadu/Whale-Monitor/releases');

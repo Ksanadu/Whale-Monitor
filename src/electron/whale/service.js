@@ -35,10 +35,11 @@ function createWhaleCredentials(dataDir) {
 
 function usageProjection(payload, stats) {
   const today = stats?.periods?.today;
-  if (!today || typeof today.costUsd !== 'number' || !Number.isFinite(today.costUsd)) return payload;
   return {...payload, budgetUsage: payload.todayUsage ?? null,
-    todayUsage: Number(today.costUsd), todayUsageCurrency: 'USD',
-    usageSource: 'local-transcripts', usageLabel: 'Token Monitor 本机统计'};
+    todayUsage: typeof today?.costUsd === 'number' && Number.isFinite(today.costUsd) && today.costUsd >= 0 ? today.costUsd : null,
+    todayUsageCurrency: 'USD',
+    todayTokens: typeof today?.totalTokens === 'number' && Number.isFinite(today.totalTokens) && today.totalTokens >= 0 ? today.totalTokens : null,
+    usageSource: 'local-transcripts', usageLabel: '今日估算费用'};
 }
 
 // The retained route names are an in-process compatibility contract, never an
@@ -117,7 +118,7 @@ async function createWhaleService({dataDir, getStats = () => null, definition}) 
                 let payload = JSON.parse(String(value));
                 payload = usageProjection(payload, getStats());
                 // Usage is available independently of whether a balance key has been configured.
-                if (!payload.ok && payload.todayUsage != null) payload = {...payload, ok: true, balanceError: payload.error, totalBalance: null, currency: 'CNY', localUsageOnly: true};
+                if (!payload.ok) payload = {...payload, ok: true, balanceError: payload.error, totalBalance: null, currency: 'CNY', localUsageOnly: true};
                 value = JSON.stringify(payload);
               }
               finish(null, new Response([204, 205, 304].includes(status) ? null : value, {status, headers}));

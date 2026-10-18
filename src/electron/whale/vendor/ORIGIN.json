@@ -9,7 +9,8 @@
     "Allow widget mounting in the standalone renderer",
     "Keep Token Monitor USD usage separate from original CNY budget alerts",
     "Display local usage without inventing an unconfigured balance",
-    "Allow desktop right-click menu regardless of hamburger visibility"
+    "Allow desktop right-click menu regardless of hamburger visibility",
+    "Replace the default desktop click card with aggregate local tokens and estimated cost"
   ],
   "originalSha256": {
     "lib/accounting.mjs": "67f7e915455f8506e9aa1e4032801d7cc332d8a842291cd31271d659cfc5ad8a",
