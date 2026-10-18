@@ -100,5 +100,5 @@ test('no balance key is needed for local statistics and upstream plugin updates 
   assert.equal(balance.totalBalance, null); assert.equal(balance.todayUsageCurrency, 'USD');
   const update = await json('/dsh-whale/update-check.json');
   assert.equal(update.hasUpdate, false);
-  assert.equal(update.source, 'https://github.com/Ksanadu/token-monitor');
+  assert.equal(update.source, 'https://github.com/Ksanadu/Whale-Monitor');
 });

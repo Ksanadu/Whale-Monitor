@@ -147,11 +147,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ksanadu/token-monitor.git"
+    "url": "git+https://github.com/Ksanadu/Whale-Monitor.git"
   },
-  "homepage": "https://github.com/Ksanadu/token-monitor",
+  "homepage": "https://github.com/Ksanadu/Whale-Monitor",
   "bugs": {
-    "url": "https://github.com/Ksanadu/token-monitor/issues"
+    "url": "https://github.com/Ksanadu/Whale-Monitor/issues"
   },
   "dependencies": {
     "@xhayper/discord-rpc": "^1.3.4",
