@@ -17860,7 +17860,10 @@ function bubbleContentTokenMap(m) {
   } else if (m.type === 'today') {
     v = (state.todayUsage !== null && state.todayUsage !== undefined ? fmt(state.todayUsage, state.todayUsageCurrency || state.currency) : '--')
     map['expense_ds'] = v
-    if (window.whaleDesktop) map['local_today_tokens'] = window.whaleLocalUsage.tokensText(state.todayTokens)
+    if (window.whaleDesktop) {
+      map['local_today_tokens'] = window.whaleLocalUsage.tokensText(state.todayTokens)
+      map['local_today_count'] = window.whaleLocalUsage.tokenCountText(state.todayTokens)
+    }
   } else if (m.type === 'session') {
     // v768：对话名模块 —— {session} = 当前对话标题（按模块的「保留长度」截断）
     map['session'] = bubbleSessionText(m)
@@ -17900,7 +17903,10 @@ function bubbleTplHelpItems(m) {
   if (m.type === 'recharge') add('recharge_ds', '充值余额（不含赠金；取不到显示 —）')
   else if (m.type === 'today') {
     add('expense_ds', '今日已用金额')
-    if (window.whaleDesktop) add('local_today_tokens', '今日本机所有已识别客户端的 Token 合计')
+    if (window.whaleDesktop) {
+      add('local_today_tokens', '今日本机所有已识别客户端的 Token 合计（含单位）')
+      add('local_today_count', '今日 Token 数量（不附加单位）')
+    }
   }
   else if (m.type === 'session') add('session', '当前对话名（超过「保留长度」会截断为 前N字...）')
   else if (m.type === 'peak' || m.type === 'nextpeak') {
@@ -18339,7 +18345,7 @@ function bubbleRowContentOf(mod) {
 function bubbleRowsTo(parentEl, mods) {
   if (!parentEl || !Array.isArray(mods)) return
   if (window.whaleDesktop) {
-    parentEl.classList.toggle('whale-local-usage', mods.some(function (m) { return m && String(m.tpl || '').indexOf('{local_today_tokens}') >= 0 }))
+    parentEl.classList.toggle('whale-local-usage', mods.some(function (m) { return m && /\{local_today_(tokens|count)\}/.test(String(m.tpl || '')) }))
     if (!parentEl.classList.contains('whale-local-usage')) parentEl.style.removeProperty('--whale-usage-fit')
   }
   var old = parentEl.querySelectorAll('.dshwv-trow, .dshwv-mimg')

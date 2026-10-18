@@ -2,21 +2,26 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {defaultModules, tokensText, migrateFirst, fitScale} = require('../../src/electron/renderer/whale/usage');
+const {defaultModules, tokensText, tokenCountText, migrateFirst, fitScale} = require('../../src/electron/renderer/whale/usage');
 
 test('desktop click card shows only today tokens without cost or explanatory text', () => {
   const modules = defaultModules();
   assert.equal(modules.length, 1);
-  assert.equal(modules[0].tpl, '{local_today_tokens}');
+  assert.equal(modules[0].tpl, '今日Token用量：{local_today_count}');
+  assert(modules[0].fontFamily.startsWith('Consolas'));
+  assert.equal(modules[0].tpl.replace('{local_today_count}', tokenCountText(1234567)), '今日Token用量：1.23M');
   assert.equal(modules[0].text, undefined);
   modules[0].tpl = 'custom';
-  assert.equal(defaultModules()[0].tpl, '{local_today_tokens}');
+  assert.equal(defaultModules()[0].tpl, '今日Token用量：{local_today_count}');
 });
 
 test('missing token counts are distinct from zero and large totals fit a bubble', () => {
   for (const value of [null, undefined, NaN, Infinity, -1, '100']) assert.equal(tokensText(value), '— Tokens');
   assert.equal(tokensText(0), '0 Tokens');
   assert.equal(tokensText(1234567), '1.23M Tokens');
+  assert.equal(tokenCountText(null), '—');
+  assert.equal(tokenCountText(0), '0');
+  assert.equal(tokenCountText(1234567), '1.23M');
 });
 
 test('saved factory card upgrades without changing later steps, frames or custom content', () => {
@@ -24,7 +29,7 @@ test('saved factory card upgrades without changing later steps, frames or custom
   const later = {kind: 'random'};
   const items = [{kind: 'custom', modules: original, frameId: 'mine'}, later];
   const migrated = migrateFirst(items, original);
-  assert.equal(migrated[0].modules[0].tpl, '{local_today_tokens}');
+  assert.equal(migrated[0].modules[0].tpl, '今日Token用量：{local_today_count}');
   assert.equal(migrated[0].frameId, 'mine');
   assert.equal(migrated[1], later);
   assert.equal(items[0].modules, original);
@@ -53,7 +58,7 @@ test('the saved whale.4 factory card gets smaller Codex typography without overw
   ];
   const migrated = migrateFirst([{kind: 'custom', modules: old}], []);
   assert(migrated[0].modules[0].size < old[1].size);
-  assert(migrated[0].modules.every(module => module.fontFamily.includes('Segoe UI')));
+  assert(migrated[0].modules.every(module => module.fontFamily.startsWith('Consolas')));
   const custom = [{kind: 'custom', modules: old.map(module => ({...module, fontFamily: 'my font'}))}];
   assert.equal(migrateFirst(custom, []), custom);
 });
@@ -66,5 +71,10 @@ test('the saved whale.5 typography card also migrates to a token-only card', () 
     {type: 'today', tpl: '估算费用 {expense_ds}', size: 3, color: '#536ba9'},
     {type: 'text', text: '已识别客户端合计', size: 1, color: '#536ba9'}
   ].map(module => ({...module, fontFamily}));
+  assert.deepEqual(migrateFirst([{kind: 'custom', modules: old}], [])[0].modules, defaultModules());
+});
+
+test('the saved 0.75.0 token card upgrades to the labeled Consolas card', () => {
+  const old = [{type: 'today', tpl: '{local_today_tokens}', size: 8, rgb: 'indigo', fontFamily: '"Segoe UI", "Microsoft YaHei UI", sans-serif'}];
   assert.deepEqual(migrateFirst([{kind: 'custom', modules: old}], [])[0].modules, defaultModules());
 });

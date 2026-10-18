@@ -1,18 +1,23 @@
 'use strict';
 
 (function () {
-  const fontFamily = '"Segoe UI", "Microsoft YaHei UI", sans-serif';
+  const fontFamily = 'Consolas, "Microsoft YaHei UI", monospace';
+  const previousFontFamily = '"Segoe UI", "Microsoft YaHei UI", sans-serif';
   const fitted = new WeakMap();
 
   function defaultModules() {
     return [
-      {type: 'today', tpl: '{local_today_tokens}', size: 8, rgb: 'indigo'}
+      {type: 'today', tpl: '今日Token用量：{local_today_count}', size: 8, rgb: 'indigo'}
     ].map(module => ({...module, fontFamily}));
   }
 
   function tokensText(value) {
-    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return '— Tokens';
-    return new Intl.NumberFormat('en-US', {notation: 'compact', maximumFractionDigits: 2}).format(value) + ' Tokens';
+    return tokenCountText(value) + ' Tokens';
+  }
+
+  function tokenCountText(value) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return '—';
+    return new Intl.NumberFormat('en-US', {notation: 'compact', maximumFractionDigits: 2}).format(value);
   }
 
   // Upgrade only a saved, unchanged factory card; custom modules/frames stay intact.
@@ -30,8 +35,9 @@
       {type: 'today', tpl: '{local_today_tokens}', size: 8, rgb: 'indigo'},
       {type: 'today', tpl: '估算费用 {expense_ds}', size: 3, color: '#536ba9'},
       {type: 'text', text: '已识别客户端合计', size: 1, color: '#536ba9'}
-    ].map(module => ({...module, fontFamily}));
-    if (first?.kind !== 'custom' || ![originalModules, previousUsage, previousTypography].some(modules => saved === JSON.stringify(modules))) return items;
+    ].map(module => ({...module, fontFamily: previousFontFamily}));
+    const previousTokenOnly = [{type: 'today', tpl: '{local_today_tokens}', size: 8, rgb: 'indigo', fontFamily: previousFontFamily}];
+    if (first?.kind !== 'custom' || ![originalModules, previousUsage, previousTypography, previousTokenOnly].some(modules => saved === JSON.stringify(modules))) return items;
     return [{...first, modules: defaultModules()}, ...items.slice(1)];
   }
 
@@ -60,7 +66,7 @@
     fitted.set(parent, {signature, row: rows[0]});
   }
 
-  const api = {defaultModules, tokensText, migrateFirst, fitScale, fitCard};
+  const api = {defaultModules, tokensText, tokenCountText, migrateFirst, fitScale, fitCard};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') window.whaleLocalUsage = api;
 })();

@@ -50,7 +50,7 @@ jobs:
           $version = $env:WHALE_BUILD_VERSION
           $tag = "v$version"
           $repo = $env:GITHUB_REPOSITORY
-          $notes = "Windows x64 独立小鲸鱼桌宠正式版。`n`n- 单击仅显示今日 Token 用量，使用 Segoe UI / 微软雅黑 UI 字体并自动适配气泡。`n- 修复右键打开菜单时桌宠移位。`n- 启动只显示桌宠；菜单底部统计与账户替代原记账入口。`n- 安装版自动校验并安装更新；便携版检测到新版本后打开下载页。`n`n源提交：$env:GITHUB_SHA`n`n详见仓库 README.whale.md。"
+          $notes = "Windows x64 独立小鲸鱼桌宠正式版。`n`n- 单击显示「今日Token用量：xxx」，英文和数字使用 Consolas，中文使用微软雅黑 UI，文字自动适配气泡。`n- 修复右键打开菜单时桌宠移位。`n- 启动只显示桌宠；菜单底部统计与账户替代原记账入口。`n- 安装版自动校验并安装更新；便携版检测到新版本后打开下载页。`n`n源提交：$env:GITHUB_SHA`n`n详见仓库 README.whale.md。"
           $notes | Set-Content -Path release-notes.txt -Encoding utf8
           $assets = @(
             "dist/whale/Whale-Monitor-$version-x64-nsis.exe",
