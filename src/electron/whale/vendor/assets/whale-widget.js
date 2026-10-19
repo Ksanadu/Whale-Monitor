@@ -375,14 +375,16 @@ var FRAME_CLASSIC_SMALL = [
   { cx: 442, cy: 646, rx: 24.5, ry: 18 },
 ]
 var FRAME_PRESETS = ['classic', 'roundrect', 'zigzag', 'custom']
+// Desktop bubbles use a lighter outline; explicit custom-frame paint stays intact.
+var FRAME_CLASSIC_STROKE = window.whaleDesktop ? 12 : 18
 // 历史那段写死的 SVG（逐字符拼装）：既是 P0 的比对基准，也是渲染器的**最终兜底**
 var FRAME_CLASSIC_MARKUP = '<svg viewBox="0 0 1026 700" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">' +
-  '<path class="dshwv-bshape" fill="#FFFFFF" stroke="#203170" stroke-width="18" stroke-linejoin="round" stroke-linecap="round" d="' + FRAME_CLASSIC_BIG_D + '"/>' +
-  '<ellipse class="dshwv-b1" cx="352" cy="561" rx="37.5" ry="26" fill="#FFFFFF" stroke="#203170" stroke-width="18"/>' +
-  '<ellipse class="dshwv-b2" cx="442" cy="646" rx="24.5" ry="18" fill="#FFFFFF" stroke="#203170" stroke-width="18"/>' +
+  '<path class="dshwv-bshape" fill="#FFFFFF" stroke="#203170" stroke-width="' + FRAME_CLASSIC_STROKE + '" stroke-linejoin="round" stroke-linecap="round" d="' + FRAME_CLASSIC_BIG_D + '"/>' +
+  '<ellipse class="dshwv-b1" cx="352" cy="561" rx="37.5" ry="26" fill="#FFFFFF" stroke="#203170" stroke-width="' + FRAME_CLASSIC_STROKE + '"/>' +
+  '<ellipse class="dshwv-b2" cx="442" cy="646" rx="24.5" ry="18" fill="#FFFFFF" stroke="#203170" stroke-width="' + FRAME_CLASSIC_STROKE + '"/>' +
   '</svg>'
 // ===== v823（P2）：另外两个内置预设的几何 + 槽位几何工具 =====
-// ⚠️ 这一段是**只新增**：上面 classic 那三行字符串一个字都没动（P0 的逐字符一致是硬约束）。
+// 网页 classic 的输出保持逐字符一致，桌面版只调整描边宽度。
 // ⚠️ 常量放在文件前部、并且"首次用到才生成"（自愈式缓存的写法见 framePresetBoxD）——
 //    因为渲染器在初始化期（泡泡构建）就会被调用，晚赋值的 var 在那里还是 undefined。
 // 大泡泡三个预设共用同一个包络 = 历史椭圆的外接矩形（圆心 454/247、rx 373、ry 232）：
@@ -14344,7 +14346,7 @@ var bubbleTapAdvance = false
 function framePaintDefaults() {
   return {
     bgOn: true, bg: '#FFFFFF', bgAlpha: 1,
-    lineOn: true, line: '#203170', lineW: 18, lineAlpha: 1,
+    lineOn: true, line: '#203170', lineW: FRAME_CLASSIC_STROKE, lineAlpha: 1,
     dashOn: false, dash: '0',
     cap: 'round', join: 'round',
   }
