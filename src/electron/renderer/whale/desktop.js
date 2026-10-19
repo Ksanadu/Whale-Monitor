@@ -57,15 +57,6 @@ function sync() {
     for (const card of root.querySelectorAll('.dshwv-pop-open .whale-fit-card')) {
       window.whaleLocalUsage?.fitCard(card);
     }
-    const menu = document.querySelector('.dshwv-menuview');
-    if (menu && !menu.querySelector('.whale-monitor-links')) {
-      const controls = document.createElement('div');
-      controls.className = 'whale-monitor-links';
-      for (const [text, action] of [['切换显示器', () => bridge.nextDisplay()]]) {
-        const button = document.createElement('button'); button.textContent = text; button.addEventListener('click', action); controls.appendChild(button);
-      }
-      menu.prepend(controls);
-    }
     for (const element of root.querySelectorAll('.dshwv-img,.dshwv-menu-btn,.dshwv-menu-open,.dshwv-pop-open')) {
       if (!visible(element)) continue;
       rects.push(...(element.matches('.dshwv-img') ? imageRegions(element) : [box(element)]));

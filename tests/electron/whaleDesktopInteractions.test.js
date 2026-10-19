@@ -57,6 +57,41 @@ test('queued desktop completions retain their own token count and use the daily 
   }
 });
 
+test('only the statistics main frame can inspect or change the whale display', () => {
+  let advances=0;
+  const contents={mainFrame:{}};
+  const context=vm.createContext({WHALE_DESKTOP:true,mainWindow:{isDestroyed:()=>false,webContents:contents},
+    whaleDesktop:{displayState:()=>({count:2,index:1}),nextDisplay:()=>{advances++;return {count:2,index:2};}}});
+  vm.runInContext(section(main,'function whaleDisplayForMonitor(event, advance) {',"  ipcMain.handle('whale:display'"),context);
+  const trusted={sender:contents,senderFrame:contents.mainFrame};
+  assert.equal(context.whaleDisplayForMonitor(trusted,false).index,1);
+  assert.equal(context.whaleDisplayForMonitor(trusted,true).index,2);
+  for(const event of [{sender:{},senderFrame:contents.mainFrame},{sender:contents,senderFrame:{}}]){
+    assert.throws(()=>context.whaleDisplayForMonitor(event,true),/Untrusted/);
+  }
+  context.WHALE_DESKTOP=false;
+  assert.throws(()=>context.whaleDisplayForMonitor(trusted,true),/Untrusted/);
+  assert.equal(advances,1);
+});
+
+test('settings display changes cycle screens, persist the selection and survive removal', () => {
+  const controller=fs.readFileSync(path.join(__dirname,'../../src/electron/whale/controller.js'),'utf8');
+  let displays=[{id:1},{id:2}],saved,placements=0;
+  const context=vm.createContext({screen:{getAllDisplays:()=>displays,getPrimaryDisplay:()=>displays[0]},
+    displayId:1,win:{isDestroyed:()=>false},fs:{writeFileSync:(_path,value)=>{saved=JSON.parse(value);}},
+    stateFile:'state',place:()=>{placements++;}});
+  vm.runInContext(section(controller,'function display() {','  const trusted ='),context);
+  vm.runInContext(section(controller,'function displayState() {','  function place() {'),context);
+  assert.equal(context.nextDisplay().index,2);
+  assert.equal(saved.displayId,2);
+  assert.equal(context.nextDisplay().index,1);
+  assert.equal(placements,2);
+  context.nextDisplay();
+  displays=[{id:1}];
+  assert.equal(context.displayState().index,1);
+  assert.equal(context.nextDisplay().count,1);
+});
+
 test('opening and closing the desktop menu never replays saved size or anchors', () => {
   for (const desktop of [true, false]) {
     let reads = 0;

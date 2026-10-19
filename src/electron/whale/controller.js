@@ -36,14 +36,19 @@ async function createWhaleDesktop({app, BrowserWindow, ipcMain, protocol, screen
     }
   };
   const onOpenMonitor = event => { if (trusted(event)) openMonitor(); };
-  const onNextDisplay = event => {
-    if (!trusted(event)) return;
+  function displayState() {
     const displays = screen.getAllDisplays();
+    return {count: displays.length, index: displays.findIndex(item => item.id === display().id) + 1};
+  }
+  function nextDisplay() {
+    const displays = screen.getAllDisplays();
+    if (!displays.length || !win || win.isDestroyed()) return displayState();
     const current = displays.findIndex(item => item.id === display().id);
     displayId = displays[(current + 1) % displays.length].id;
     fs.writeFileSync(stateFile, JSON.stringify({displayId}));
     place();
-  };
+    return displayState();
+  }
   function place() {
     if (!win || win.isDestroyed()) return;
     const target = display();
@@ -84,7 +89,6 @@ async function createWhaleDesktop({app, BrowserWindow, ipcMain, protocol, screen
   win.once('ready-to-show', () => { if (!disposed) win.showInactive(); });
   ipcMain.on('whale:regions', onRegions);
   ipcMain.on('whale:openMonitor', onOpenMonitor);
-  ipcMain.on('whale:nextDisplay', onNextDisplay);
   screen.on('display-removed', place);
   screen.on('display-metrics-changed', place);
   const events = new Worker(path.join(__dirname, 'localEventsWorker.js'));
@@ -96,6 +100,8 @@ async function createWhaleDesktop({app, BrowserWindow, ipcMain, protocol, screen
   events.on('error', error => logger('本地事件监听停止：' + error.message));
   await win.loadURL('whale://app/');
   return {
+    displayState,
+    nextDisplay,
     show() { if (win && !win.isDestroyed()) { place(); win.showInactive(); } },
     toggle() { if (win && !win.isDestroyed()) { if (win.isVisible()) win.hide(); else win.showInactive(); } },
     isVisible: () => Boolean(win && !win.isDestroyed() && win.isVisible()),
@@ -103,7 +109,7 @@ async function createWhaleDesktop({app, BrowserWindow, ipcMain, protocol, screen
     dispose() {
       disposed = true;
       void events.terminate(); service.dispose();
-      for (const [name, fn] of [['whale:regions', onRegions], ['whale:openMonitor', onOpenMonitor], ['whale:nextDisplay', onNextDisplay]]) ipcMain.removeListener(name, fn);
+      for (const [name, fn] of [['whale:regions', onRegions], ['whale:openMonitor', onOpenMonitor]]) ipcMain.removeListener(name, fn);
       screen.removeListener('display-removed', place); screen.removeListener('display-metrics-changed', place);
       protocol.unhandle('whale');
       if (win && !win.isDestroyed()) win.destroy();

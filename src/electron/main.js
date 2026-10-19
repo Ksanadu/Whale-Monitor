@@ -8465,6 +8465,15 @@ app.whenReady().then(async () => {
     const win = BrowserWindow.fromWebContents(event.sender);
     return getNativeMaterialState(win);
   });
+  function whaleDisplayForMonitor(event, advance) {
+    if (!WHALE_DESKTOP || !whaleDesktop || !mainWindow || mainWindow.isDestroyed()
+      || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) {
+      throw new Error('Untrusted whale monitor request');
+    }
+    return advance ? whaleDesktop.nextDisplay() : whaleDesktop.displayState();
+  }
+  ipcMain.handle('whale:display', event => whaleDisplayForMonitor(event, false));
+  ipcMain.handle('whale:nextDisplay', event => whaleDisplayForMonitor(event, true));
   ipcMain.handle('app:getInfo', () => ({
     notchCapabilities: notchController?.getCapabilities() || null,
     version: app.getVersion(),
