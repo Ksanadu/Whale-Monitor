@@ -141,6 +141,7 @@ html.whale-desktop #settingsPanel .whale-settings-section {
 }
 html.whale-desktop #settingsPanel .whale-settings-section > summary { list-style: none; cursor: pointer; }
 html.whale-desktop #settingsPanel .whale-settings-section > summary::-webkit-details-marker { display: none; }
+html.whale-desktop #settingsPanel .whale-settings-section[open] .settings-section-icon { color: var(--accent); opacity: 1; }
 html.whale-desktop #settingsPanel .whale-settings-section[open] > summary .settings-section-disclosure { transform: rotate(180deg); }
 html.whale-desktop #settingsPanel .whale-settings-body { padding: 4px 4px 10px; min-width: 0; }
 html.whale-desktop #settingsPanel .whale-settings-action {

@@ -7,11 +7,15 @@
     if (text !== undefined) node.textContent = text;
     return node;
   }
-  function section(title, id) {
+  function section(title, id, iconName) {
     const root = element('details', 'whale-settings-section');
     root.id = id;
     const summary = element('summary', 'settings-section-toggle');
-    summary.append(element('span', 'settings-section-heading', title), element('span', 'settings-section-disclosure'));
+    const heading = element('span', 'settings-section-heading');
+    const icon = element('span', `settings-section-icon settings-section-icon-${iconName}`);
+    icon.setAttribute('aria-hidden', 'true');
+    heading.append(icon, element('span', '', title));
+    summary.append(heading, element('span', 'settings-section-disclosure'));
     const body = element('div', 'whale-settings-body');
     root.append(summary, body);
     return {root, body};
@@ -42,7 +46,7 @@
   }
   function mount(panel, displayGroup) {
     const api = window.tokenMonitor;
-    const appearance = section('小鲸鱼外观', 'whaleAppearanceSettings');
+    const appearance = section('小鲸鱼外观', 'whaleAppearanceSettings', 'whale');
     appearance.body.append(displayGroup);
     panel.prepend(appearance.root);
     const note = element('p', 'settings-note', '右键桌宠打开统计与账户，在这里调整外观与交互。');
@@ -114,7 +118,7 @@
     appearance.root.addEventListener('toggle', () => { if (appearance.root.open) void command(); });
     addEventListener('focus', () => { if (appearance.root.open && !panel.classList.contains('hidden')) void command(); });
 
-    const about = section('关于', 'whaleAboutSettings');
+    const about = section('关于', 'whaleAboutSettings', 'about');
     const previousAbout = document.querySelector('.about-settings');
     if (previousAbout) about.body.append(previousAbout);
     panel.append(about.root);
