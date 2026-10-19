@@ -1,5 +1,6 @@
 html, body { margin: 0; width: 100%; height: 100%; background: transparent; overflow: hidden; font-family: 'Microsoft YaHei UI', sans-serif; }
 #root { display: none; }
+.dshwv-menu-btn { display: none !important; }
 
 /* Match the installed Codex UI's system font stack, including OS CJK fallback. */
 .dshwv-pop .dshwv-text, .dshwv-pop .dshwv-text .dshwv-trow, .dshwv-pop .dshwv-text .dshwv-trowtx {

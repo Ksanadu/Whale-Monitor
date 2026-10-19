@@ -19941,6 +19941,7 @@ function pressUp() {
 var menuOpen = false
 var menuClosedAt = 0 // 最近一次关闭菜单的时刻(用于避免"关掉后同一次手势又把它长按打开")
 function toggleMenu() {
+  if (window.whaleDesktop) { window.whaleDesktop.openMonitor(); return }
   // v865（issue #237 后半）：打开菜单时补读一次 size 配置（别的端/别的标签改过也能立刻生效）
   // The standalone UI already owns live settings. Replaying the saved size and
   // anchor here resets a freely dragged pet when its context menu opens.
@@ -22264,6 +22265,34 @@ function loadSizeCfg() {
 loadSizeCfg()
 // v865：低频补读（回到标签页 / 打开菜单时）—— 2 秒去抖，避免密集事件里反复请求
 var sizeCfgAt = 0
+function desktopSettingsSnapshot() {
+  return {scale: state.scale, minScale: MIN_SCALE, maxScale: MAX_SCALE,
+    role: currentRole.id, roles: roleList.map(function (role) { return {id: role.id, name: role.name} }),
+    bubble: bubbleOn, scrollGap: scrollGapOn, scrollGapPx: scrollGapPx}
+}
+if (window.whaleDesktop && window.whaleDesktop.onSettingsCommand) {
+  window.whaleDesktop.onSettingsCommand(function (message) {
+    if (message.command === 'scale') setScale(message.value)
+    else if (message.command === 'bubble') setBubbleOn(message.value)
+    else if (message.command === 'scrollGap') setScrollGapOn(message.value)
+    else if (message.command === 'scrollGapPx') setScrollGapPx(message.value)
+    else if (message.command === 'role') {
+      var selected = roleList.filter(function (role) { return role.id === message.value })[0]
+      if (!selected && message.value === 'default') selected = {id: 'default', name: '小鲸鱼', url: IMG_URL}
+      if (!selected) throw new Error('Unknown role')
+      applyRole(selected.id, selected.name, selected.url)
+    } else if (message.command === 'sound') openSoundSettingsPanel()
+    else if (message.command === 'pressBubble') openBubbleEditor()
+    else if (message.command === 'snap') openSnapModal()
+    else if (message.command === 'resources') openResManager()
+    else if (message.command === 'importRole') {
+      if (!message.file) return desktopSettingsSnapshot()
+      var bytes = Uint8Array.from(atob(message.file.base64), function (character) { return character.charCodeAt(0) })
+      onRoleFileChosen({files: [new File([bytes], message.file.name, {type: message.file.type})]})
+    }
+    return desktopSettingsSnapshot()
+  })
+}
 function resyncSizeCfg() {
   try {
     var last = Number(sizeCfgAt) || 0

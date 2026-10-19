@@ -8,6 +8,8 @@ const {sanitizeRegions} = require('./geometry');
 const {allowWhaleRequest, privateResponse} = require('./requestPolicy');
 const {floatingAlwaysOnTopLevel} = require('../windowBehavior');
 const {installWindowsNonActivatingInput} = require('../windowsNonActivatingInput');
+const {normalizeSettingsCommand} = require('./settingsCommands');
+const {desktopAbout} = require('./about');
 
 const WHALE_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: blob:; connect-src 'self'; media-src 'self' data: blob:; object-src 'none'; base-uri 'none'; frame-src 'none'";
 
@@ -17,6 +19,8 @@ async function createWhaleDesktop({app, BrowserWindow, ipcMain, protocol, screen
   const rendererDir = path.join(__dirname, '../renderer/whale');
   const service = await createWhaleService({dataDir, getStats});
   let win = null, displayId = null, disposed = false, editing = false;
+  let commandId = 0;
+  const commands = new Map();
   const stateFile = path.join(dataDir, 'desktop-window.json');
   try { displayId = JSON.parse(fs.readFileSync(stateFile, 'utf8')).displayId; } catch (_) {}
   function display() {
@@ -36,6 +40,25 @@ async function createWhaleDesktop({app, BrowserWindow, ipcMain, protocol, screen
     }
   };
   const onOpenMonitor = event => { if (trusted(event)) openMonitor(); };
+  const onSettingsReply = (event, reply) => {
+    if (!trusted(event)) return;
+    const pending = commands.get(reply?.id);
+    if (!pending) return;
+    commands.delete(reply.id);
+    clearTimeout(pending.timer);
+    if (reply.error) pending.reject(new Error('桌宠设置操作失败'));
+    else pending.resolve(reply.value);
+  };
+  function settingsCommand(command, value, importedRole) {
+    const normalized = normalizeSettingsCommand(command, value);
+    if (!win || win.isDestroyed() || disposed || commands.size >= 8) return Promise.reject(new Error('桌宠暂时不可用'));
+    return new Promise((resolve, reject) => {
+      const id = ++commandId;
+      const timer = setTimeout(() => { commands.delete(id); reject(new Error('桌宠设置响应超时')); }, 10000);
+      commands.set(id, {resolve, reject, timer});
+      win.webContents.send('whale:settingsCommand', {...normalized, id, ...(command === 'importRole' ? {file: importedRole} : {})});
+    });
+  }
   function displayState() {
     const displays = screen.getAllDisplays();
     return {count: displays.length, index: displays.findIndex(item => item.id === display().id) + 1};
@@ -89,6 +112,7 @@ async function createWhaleDesktop({app, BrowserWindow, ipcMain, protocol, screen
   win.once('ready-to-show', () => { if (!disposed) win.showInactive(); });
   ipcMain.on('whale:regions', onRegions);
   ipcMain.on('whale:openMonitor', onOpenMonitor);
+  ipcMain.on('whale:settingsReply', onSettingsReply);
   screen.on('display-removed', place);
   screen.on('display-metrics-changed', place);
   const events = new Worker(path.join(__dirname, 'localEventsWorker.js'));
@@ -102,14 +126,18 @@ async function createWhaleDesktop({app, BrowserWindow, ipcMain, protocol, screen
   return {
     displayState,
     nextDisplay,
+    settingsCommand,
+    about: () => desktopAbout({app, service, getStats, visible: Boolean(win && !win.isDestroyed() && win.isVisible()), display: displayState()}),
     show() { if (win && !win.isDestroyed()) { place(); win.showInactive(); } },
     toggle() { if (win && !win.isDestroyed()) { if (win.isVisible()) win.hide(); else win.showInactive(); } },
     isVisible: () => Boolean(win && !win.isDestroyed() && win.isVisible()),
     owns: other => other === win,
     dispose() {
       disposed = true;
+      for (const pending of commands.values()) { clearTimeout(pending.timer); pending.reject(new Error('桌宠已退出')); }
+      commands.clear();
       void events.terminate(); service.dispose();
-      for (const [name, fn] of [['whale:regions', onRegions], ['whale:openMonitor', onOpenMonitor]]) ipcMain.removeListener(name, fn);
+      for (const [name, fn] of [['whale:regions', onRegions], ['whale:openMonitor', onOpenMonitor], ['whale:settingsReply', onSettingsReply]]) ipcMain.removeListener(name, fn);
       screen.removeListener('display-removed', place); screen.removeListener('display-metrics-changed', place);
       protocol.unhandle('whale');
       if (win && !win.isDestroyed()) win.destroy();

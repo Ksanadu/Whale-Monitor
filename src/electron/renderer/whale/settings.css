@@ -33,7 +33,7 @@ html.whale-desktop .shell {
   font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif;
 }
 html.whale-desktop .shell::before { display: none; }
-html.whale-desktop .titlebar { align-items: flex-start; }
+html.whale-desktop .titlebar { align-items: flex-start; flex: 0 0 64px; min-height: 64px; }
 html.whale-desktop .titlebar > div:first-child { padding-top: 6px; }
 html.whale-desktop .title-controls {
   display: flex;
@@ -135,3 +135,32 @@ html.whale-desktop #settingsPanel .checkbox-label > input[type="checkbox"]::befo
 html.whale-desktop #settingsPanel .inline-option { border-radius: 6px; font-size: 12px; }
 html.whale-desktop #settingsPanel .whale-display-settings { padding: 0 4px 7px; }
 html.whale-desktop #settingsPanel .whale-display-settings .settings-item { margin: 0; }
+html.whale-desktop #settingsPanel .whale-settings-section {
+  border-top: 1px solid rgba(32, 49, 112, .14);
+  min-width: 0;
+}
+html.whale-desktop #settingsPanel .whale-settings-section > summary { list-style: none; cursor: pointer; }
+html.whale-desktop #settingsPanel .whale-settings-section > summary::-webkit-details-marker { display: none; }
+html.whale-desktop #settingsPanel .whale-settings-section[open] > summary .settings-section-disclosure { transform: rotate(180deg); }
+html.whale-desktop #settingsPanel .whale-settings-body { padding: 4px 4px 10px; min-width: 0; }
+html.whale-desktop #settingsPanel .whale-settings-action {
+  padding: 4px 8px;
+  border: 1px solid rgba(32, 49, 112, .35);
+  border-radius: 6px;
+  background: #edf3ff;
+  color: #203170;
+  font: inherit;
+  cursor: pointer;
+}
+html.whale-desktop #settingsPanel .whale-settings-action:disabled { opacity: .45; cursor: default; }
+html.whale-desktop #settingsPanel .whale-scale-controls { display: flex; align-items: center; gap: 6px; max-width: 65%; }
+html.whale-desktop #settingsPanel .whale-scale-controls input[type="range"] { min-width: 40px; width: 100%; accent-color: #203170; }
+html.whale-desktop #settingsPanel .whale-scale-controls input[type="number"] { flex: 0 0 44px; width: 44px; }
+html.whale-desktop #settingsPanel .whale-settings-body .settings-item > input[type="checkbox"] { flex: 0 0 14px; width: 14px; height: 14px; margin: 0; accent-color: #203170; }
+html.whale-desktop #settingsPanel .whale-settings-status { min-height: 16px; margin-top: 6px; }
+html.whale-desktop #settingsPanel .whale-about-runtime h3 { font-size: 12px; font-weight: 600; line-height: 1.4; margin: 10px 0 4px; }
+html.whale-desktop #settingsPanel .whale-about-row { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 8px; padding: 4px 0; }
+html.whale-desktop #settingsPanel .whale-about-row > :last-child { overflow-wrap: anywhere; }
+html.whale-desktop #settingsPanel .whale-about-file { display: grid; gap: 3px; padding: 7px 0; border-top: 1px solid rgba(32, 49, 112, .1); }
+html.whale-desktop #settingsPanel .whale-about-file code { font-size: 10px; white-space: normal; overflow-wrap: anywhere; }
+html.whale-desktop #settingsPanel .whale-about-actions { flex-wrap: wrap; margin: 8px 0; }

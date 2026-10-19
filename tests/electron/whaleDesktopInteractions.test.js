@@ -92,19 +92,20 @@ test('settings display changes cycle screens, persist the selection and survive 
   assert.equal(context.nextDisplay().count,1);
 });
 
-test('opening and closing the desktop menu never replays saved size or anchors', () => {
+test('desktop menu gestures open the native monitor without replaying size or anchors', () => {
   for (const desktop of [true, false]) {
-    let reads = 0;
+    let reads = 0, opened = 0;
     const position = {left: 300, top: 400};
-    const context = vm.createContext({window: {whaleDesktop: desktop}, menuOpen: false, menuBtnHide: true,
+    const context = vm.createContext({window: {whaleDesktop: desktop ? {openMonitor:()=>{opened++;}} : null}, menuOpen: false, menuBtnHide: true,
       menuBox: {classList: {toggle() {}}}, positionMenu() {}, closeUsagePanel() {}, closeAboutPanel() {},
       resyncSizeCfg() { reads++; position.left = 0; position.top = 0; }});
     vm.runInContext(section(widget, 'function toggleMenu() {', '\nfunction closeMenu()'), context);
     context.toggleMenu();
-    assert.equal(context.menuOpen, true);
+    assert.equal(context.menuOpen, !desktop);
     context.toggleMenu();
     assert.equal(context.menuOpen, false);
     assert.equal(reads, desktop ? 0 : 2, 'web plugin retains its original synchronization');
+    assert.equal(opened, desktop ? 2 : 0);
     if (desktop) assert.deepEqual(position, {left: 300, top: 400});
   }
 });

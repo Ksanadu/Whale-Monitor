@@ -102,6 +102,8 @@ contextBridge.exposeInMainWorld('tokenMonitor', {
   getAppInfo: () => ipcRenderer.invoke('app:getInfo'),
   getWhaleDisplay: () => ipcRenderer.invoke('whale:display'),
   nextWhaleDisplay: () => ipcRenderer.invoke('whale:nextDisplay'),
+  whaleSettings: (command, value) => ipcRenderer.invoke('whale:settings', command, value),
+  getWhaleAbout: () => ipcRenderer.invoke('whale:about'),
   generateDiagnosticReport: () => ipcRenderer.invoke('diagnostics:generate'),
   copyText: (text) => ipcRenderer.invoke('clipboard:write', text),
   clientSources: (clientId) => ipcRenderer.invoke('usage:clientSources', clientId),

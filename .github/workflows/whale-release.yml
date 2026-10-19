@@ -38,7 +38,7 @@ jobs:
           "WHALE_BUILD_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - run: npm run lint
       - name: Verify desktop and updater regressions
-        run: node --test tests/electron/whale*.test.js tests/electron/appUpdateState.test.js tests/electron/appUpdatePresentation.test.js tests/electron/updateInstallQuit.test.js tests/electron/tray.test.js tests/electron/windowLifecycle.test.js tests/electron/statsRenderScheduler.test.js
+        run: node --test tests/electron/whale*.test.js tests/electron/aboutSettings.test.js tests/electron/appUpdateState.test.js tests/electron/appUpdatePresentation.test.js tests/electron/updateInstallQuit.test.js tests/electron/tray.test.js tests/electron/windowLifecycle.test.js tests/electron/statsRenderScheduler.test.js
       - run: npm run dist:whale:win
       - name: Verify installer hashes and update channels
         run: node scripts/verify-whale-release.js
@@ -50,7 +50,7 @@ jobs:
           $version = $env:WHALE_BUILD_VERSION
           $tag = "v$version"
           $repo = $env:GITHUB_REPOSITORY
-          $notes = "Windows x64 独立小鲸鱼桌宠正式版。`n`n- 切换显示器移至统计与账户的设置页顶部，显示当前屏幕，单屏时禁用。`n- 主页和设置统一采用桌宠一级菜单的白底蓝字、圆角风格；最小化与关闭按钮始终显示，时间范围按钮独立一行。`n- 任务完成提示改为「任务已完成 / 花费Token： / 本轮用量」三行，与今日Token共用字体和缩放样式，按气泡空间适配。`n- 单击分两行显示「今日Token」和用量数字，标题加大一档，字号随桌宠同比增大；英文和数字使用 Consolas，中文使用微软雅黑 UI。`n- 修复右键打开菜单时桌宠移位。`n- 启动只显示桌宠；菜单底部统计与账户替代原记账入口。`n- 安装版自动校验并安装更新；便携版检测到新版本后打开下载页。`n`n源提交：$env:GITHUB_SHA`n`n详见仓库 README.whale.md。"
+          $notes = "Windows x64 独立小鲸鱼桌宠正式版。`n`n- 三横杠与旧一级菜单移除，右键桌宠直接打开统计与账户。`n- 原角色、大小、音效、气泡、吸附、资源和显示器设置全部收进右下角齿轮的「小鲸鱼外观」。`n- 原版本/自检信息与诊断收进「关于」，使用当前桌面版版本、运行信息及 Whale Monitor 仓库、更新日志与反馈链接。`n- 主页和设置统一采用桌宠一级菜单的白底蓝字、圆角风格；最小化与关闭按钮始终显示，时间范围按钮独立一行。`n- 任务完成提示改为「任务已完成 / 花费Token： / 本轮用量」三行，与今日Token共用字体和缩放样式，按气泡空间适配。`n- 单击分两行显示「今日Token」和用量数字，标题加大一档，字号随桌宠同比增大；英文和数字使用 Consolas，中文使用微软雅黑 UI。`n- 修复右键打开菜单时桌宠移位。`n- 启动只显示桌宠；右键打开统计窗口，关闭统计窗口保留桌宠。`n- 安装版自动校验并安装更新；便携版检测到新版本后打开下载页。`n`n源提交：$env:GITHUB_SHA`n`n详见仓库 README.whale.md。"
           $notes | Set-Content -Path release-notes.txt -Encoding utf8
           $assets = @(
             "dist/whale/Whale-Monitor-$version-x64-nsis.exe",

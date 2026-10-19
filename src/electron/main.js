@@ -8474,6 +8474,28 @@ app.whenReady().then(async () => {
   }
   ipcMain.handle('whale:display', event => whaleDisplayForMonitor(event, false));
   ipcMain.handle('whale:nextDisplay', event => whaleDisplayForMonitor(event, true));
+  ipcMain.handle('whale:settings', async (event, command, value) => {
+    whaleDisplayForMonitor(event, false);
+    const normalized = require('./whale/settingsCommands').normalizeSettingsCommand(command, value);
+    let importedRole;
+    if (normalized.command === 'importRole') {
+      const result = await dialog.showOpenDialog(mainWindow, {title: '导入小鲸鱼角色', properties: ['openFile'],
+        filters: [{name: '角色图片', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp']}]});
+      if (result.canceled || !result.filePaths[0]) return whaleDesktop.settingsCommand('snapshot');
+      const filename = result.filePaths[0];
+      const stat = await fs.promises.stat(filename);
+      if (!stat.isFile() || stat.size > 16 * 1024 * 1024) throw new Error('角色图片不能超过 16 MB');
+      const types = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp'};
+      const type = types[path.extname(filename).toLowerCase()];
+      if (!type) throw new Error('不支持的角色图片格式');
+      importedRole = {name: path.basename(filename), type, base64: (await fs.promises.readFile(filename)).toString('base64')};
+    }
+    return whaleDesktop.settingsCommand(normalized.command, normalized.value, importedRole);
+  });
+  ipcMain.handle('whale:about', event => {
+    whaleDisplayForMonitor(event, false);
+    return whaleDesktop.about();
+  });
   ipcMain.handle('app:getInfo', () => ({
     notchCapabilities: notchController?.getCapabilities() || null,
     version: app.getVersion(),

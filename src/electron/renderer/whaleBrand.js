@@ -30,7 +30,7 @@ if (new URLSearchParams(location.search).get('whaleDesktop') === '1') {
     button.textContent = '切换显示器';
     row.append(text, button);
     group.append(row);
-    panel.prepend(group);
+    window.WhaleMonitorSettings.mount(panel, group);
     let busy = false;
     async function refreshDisplay(advance = false) {
       if (busy) return;

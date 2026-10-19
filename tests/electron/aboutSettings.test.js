@@ -110,13 +110,19 @@ test('maintenance versions stay as compact flat rows instead of nested cards', (
   assert.match(css, /\.maintenance-version-item \{[\s\S]*display: flex;[\s\S]*justify-content: space-between/);
 });
 
-test('About uses runtime version and allowlisted Token Monitor links', () => {
+test('About uses runtime version and selects the correct project links for each desktop', () => {
   const app = read('app.js');
 
   assert.match(app, /aboutVersion\.textContent = state\.appInfo\?\.version \? `v\$\{state\.appInfo\.version\}` : '—'/);
-  assert.match(app, /TOKEN_MONITOR_REPOSITORY_URL = 'https:\/\/github\.com\/Javis603\/token-monitor'/);
-  assert.match(app, /TOKEN_MONITOR_ISSUES_URL = `\$\{TOKEN_MONITOR_REPOSITORY_URL\}\/issues\/new\/choose`/);
-  assert.match(app, /TOKEN_MONITOR_WEBSITE_URL = 'https:\/\/javis-ai\.com\/token-monitor\/'/);
+  const links = app.slice(app.indexOf('const TOKEN_MONITOR_REPOSITORY_URL ='), app.indexOf('const TOKEN_MONITOR_WSL_SQLITE_GUIDE_URL ='));
+  for (const [search, expected] of [
+    ['', ['https://github.com/Javis603/token-monitor', 'https://github.com/Javis603/token-monitor/issues/new/choose', 'https://javis-ai.com/token-monitor/']],
+    ['?whaleDesktop=1', ['https://github.com/Ksanadu/Whale-Monitor', 'https://github.com/Ksanadu/Whale-Monitor/issues/new', 'https://github.com/Ksanadu/Whale-Monitor/releases']]
+  ]) {
+    const context = vm.createContext({location: {search}, URLSearchParams});
+    const selected = vm.runInContext(links + '\n[TOKEN_MONITOR_REPOSITORY_URL,TOKEN_MONITOR_ISSUES_URL,TOKEN_MONITOR_WEBSITE_URL]', context);
+    assert.deepEqual(Array.from(selected), expected);
+  }
   assert.match(app, /openRepositoryButton\?\.addEventListener\('click',[\s\S]*TOKEN_MONITOR_REPOSITORY_URL/);
   assert.match(app, /openWebsiteButton\?\.addEventListener\('click',[\s\S]*TOKEN_MONITOR_WEBSITE_URL/);
   assert.match(app, /reportIssueButton\?\.addEventListener\('click',[\s\S]*TOKEN_MONITOR_ISSUES_URL/);
