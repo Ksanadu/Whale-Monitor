@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const {normalizeSettingsCommand} = require('../../src/electron/whale/settingsCommands');
-const {desktopAbout} = require('../../src/electron/whale/about');
+const {desktopAbout, brandDesktopDiagnostic} = require('../../src/electron/whale/about');
 const vm = require('node:vm');
 
 test('desktop appearance commands reject arbitrary actions, files and malformed values', () => {
@@ -62,4 +62,12 @@ test('appearance replies must come from the pet and timed-out requests cannot ap
   await rejected;
   context.reply({pet:true},{id:sent[1].id,value:'late'});
   assert.equal(commands.size,0);
+});
+
+test('desktop diagnostic branding changes the report title while preserving its redacted payload and byte limit', () => {
+  const original='Token Monitor Diagnostic Report\r\nschemaVersion: 1\r\nsource: Token Monitor\r\n[redacted]';
+  const branded=brandDesktopDiagnostic(original);
+  assert(branded.startsWith('Whale Monitor Diagnostic Report\r\n'));
+  assert.equal(branded.slice(branded.indexOf('\r\n')),original.slice(original.indexOf('\r\n')));
+  assert.equal(Buffer.byteLength(branded),Buffer.byteLength(original));
 });

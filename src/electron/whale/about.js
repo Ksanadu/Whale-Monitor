@@ -44,4 +44,8 @@ async function desktopAbout({app, service, getStats, visible, display}) {
     credits: '基于 Token Monitor 的本地统计能力与小鲸鱼桌宠界面，独立运行，无需 DSH 后端。'};
 }
 
-module.exports = {desktopAbout};
+function brandDesktopDiagnostic(text) {
+  return String(text).replace(/^Token Monitor Diagnostic Report(?=\r?\n|$)/, 'Whale Monitor Diagnostic Report');
+}
+
+module.exports = {desktopAbout, brandDesktopDiagnostic};

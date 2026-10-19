@@ -8514,11 +8514,12 @@ app.whenReady().then(async () => {
   }));
   ipcMain.handle('diagnostics:generate', async () => {
     const report = await diagnosticReportGenerator.generate();
+    const diagnosticText = WHALE_DESKTOP ? require('./whale/about').brandDesktopDiagnostic(report.text) : report.text;
     return {
       generatedAt: report.generatedAt,
       completeness: report.completeness,
-      text: report.text,
-      bytes: report.bytes,
+      text: diagnosticText,
+      bytes: Buffer.byteLength(diagnosticText, 'utf8'),
       truncated: report.truncated,
       includedClientCount: report.includedClientCount,
       omittedClientCount: report.omittedClientCount,
