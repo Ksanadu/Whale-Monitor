@@ -144,3 +144,35 @@ test('an initially hidden monitor stays hidden across ready, load, failure and f
     assert.equal(reveals, initiallyHidden ? 0 : 1);
   }
 });
+
+test('pet right-click toggles the monitor through the X action and restores minimized windows', () => {
+  for (const trayMode of [false, true]) {
+    let closes = 0, hides = 0, creates = 0;
+    const target = {visible: false, minimized: false, destroyed: false,
+      isDestroyed() { return this.destroyed; }, isVisible() { return this.visible; },
+      isMinimized() { return this.minimized; }, restore() { this.minimized = false; },
+      close() { closes++; this.visible = false; }};
+    const context = vm.createContext({mainWindow: target, settings: {trayMode},
+      createWindow(_bounds, options) { assert.equal(options.initiallyHidden, true); creates++; target.destroyed = false; context.mainWindow = target; },
+      showWindow(win) { win.visible = true; }, showPopover() { target.visible = true; },
+      hidePopover() { hides++; target.visible = false; }});
+    vm.runInContext(section(main, 'function toggleWhaleMonitor() {', '\nfunction currentWindowToggleShortcutStatus()'), context);
+    context.toggleWhaleMonitor();
+    assert.equal(target.visible, true, 'first right-click opens the monitor');
+    context.toggleWhaleMonitor();
+    assert.equal(target.visible, false, 'second right-click performs the close action');
+    assert.equal(closes, trayMode ? 0 : 1);
+    assert.equal(hides, trayMode ? 1 : 0);
+    context.toggleWhaleMonitor();
+    target.minimized = true;
+    context.toggleWhaleMonitor();
+    assert.equal(target.visible, true, 'a minimized monitor is restored instead of closed');
+    assert.equal(target.minimized, false);
+    context.mainWindow = null;
+    context.toggleWhaleMonitor();
+    target.destroyed = true;
+    context.toggleWhaleMonitor();
+    assert.equal(creates, 2);
+    assert.equal(target.visible, true);
+  }
+});

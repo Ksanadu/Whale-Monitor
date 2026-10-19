@@ -281,7 +281,7 @@ test('starts the runtime immediately and holds only Widget publication until hos
   const settingsIndex = readySource.indexOf('ensureSettingsLoaded();');
   const supportIndex = readySource.indexOf('const widgetRuntime = macWidgetRuntimeSupport({');
   const recoveryStartIndex = readySource.indexOf('const widgetRecovery = widgetRuntimeSupported');
-  const windowIndex = readySource.indexOf('createWindow();');
+  const windowIndex = readySource.indexOf('createWindow(undefined, {initiallyHidden: WHALE_DESKTOP});');
   const modeIndex = readySource.indexOf('startMode();');
   const recoveryCompletionIndex = readySource.indexOf('void widgetRecovery.finally(() => {');
   assert.ok(settingsIndex >= 0 && supportIndex > settingsIndex && recoveryStartIndex > supportIndex);

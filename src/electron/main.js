@@ -5345,6 +5345,18 @@ function focusExistingWindow() {
   }
 }
 
+function toggleWhaleMonitor() {
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && !mainWindow.isMinimized()) {
+    if (settings?.trayMode) hidePopover();
+    else mainWindow.close();
+    return;
+  }
+  if (!mainWindow || mainWindow.isDestroyed()) createWindow(undefined, {initiallyHidden: true});
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  if (settings?.trayMode) showPopover();
+  else showWindow(mainWindow);
+}
+
 function currentWindowToggleShortcutStatus() {
   const shortcut = normalizeWindowToggleShortcut(settings?.windowToggleShortcut);
   const registered = windowToggleShortcutRegistered && registeredWindowToggleShortcut === shortcut;
@@ -7756,7 +7768,7 @@ app.whenReady().then(async () => {
   if (WHALE_DESKTOP) {
     whaleDesktop = await createWhaleDesktop({app, BrowserWindow, ipcMain, protocol: require('electron').protocol,
       screen, shell, getStats: () => latestStats,
-      openMonitor: () => { if (!mainWindow || mainWindow.isDestroyed()) createWindow(); showWindow(mainWindow); },
+      openMonitor: toggleWhaleMonitor,
       logger: message => console.warn('[whale]', message)});
   }
   createWindow(undefined, {initiallyHidden: WHALE_DESKTOP});

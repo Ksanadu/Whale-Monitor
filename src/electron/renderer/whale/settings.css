@@ -91,6 +91,8 @@ html.whale-desktop #settingsPanel .settings-section-heading { font-size: 12px; f
 html.whale-desktop #settingsPanel .settings-section-icon { color: #536ba9; background-color: currentColor; }
 html.whale-desktop #settingsPanel .settings-section-summary { font-size: 11px; }
 html.whale-desktop #settingsPanel .settings-section-details-inner { padding: 0 4px 8px; }
+/* Padding otherwise keeps the collapsed 0fr animation row 8px tall. */
+html.whale-desktop #settingsPanel .settings-section-details.hidden > .settings-section-details-inner { padding-block: 0; }
 html.whale-desktop #settingsPanel .settings-item {
   min-height: 28px;
   gap: 4px 8px;
