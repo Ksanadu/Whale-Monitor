@@ -198,6 +198,10 @@ function prepareTrayIconForPlatform(img, { platform = process.platform, scaleFac
 function buildTrayIcon(options = {}) {
   const platform = options.platform || process.platform;
   const nativeImage = options.nativeImage || require('electron').nativeImage;
+  if (options.iconPath) {
+    const image = nativeImage.createFromPath(options.iconPath);
+    return resizeTrayIconForPlatform(image, { platform, scaleFactor: options.scaleFactor, square: true });
+  }
   if (platform === 'darwin') {
     const image = nativeImage.createFromPath(TRAY_ICON_PATH);
     const sized = resizeTrayIconForPlatform(image, { platform, scaleFactor: options.scaleFactor });
@@ -430,6 +434,7 @@ async function runTrayMenuAction({ setInFlight, refreshContextMenu, action }) {
 
 function createTray({
   electron = require('electron'),
+  icon,
   getMenuState,
   onOpenSettings,
   onOpenView,
@@ -448,7 +453,7 @@ function createTray({
   translateMenu
 }) {
   const { Tray, Menu, nativeImage } = electron;
-  const tray = new Tray(buildTrayIcon({ platform, nativeImage }));
+  const tray = new Tray(icon || buildTrayIcon({ platform, nativeImage }));
   tray.setToolTip(getMenuState?.().whaleDesktop ? 'Whale Monitor' : 'Token Monitor');
 
   const menuState = () => (typeof getMenuState === 'function' ? getMenuState() : {});

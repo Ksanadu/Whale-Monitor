@@ -88,6 +88,16 @@ function trayCalls() {
   };
 }
 
+test('tray initialization uses a supplied desktop icon without loading the upstream asset', () => {
+  const calls = trayCalls();
+  const icon = {};
+  createTray({electron: fakeTrayElectron(calls), platform: 'win32', icon,
+    getMenuState: () => ({whaleDesktop: true})});
+  assert.deepEqual(calls.icons, [icon]);
+  assert.deepEqual(calls.iconPaths, []);
+  assert.deepEqual(calls.tooltips, ['Whale Monitor']);
+});
+
 test('recent usage provider follows the newest valid session timestamp', () => {
   const recentStats = {
     periods: {

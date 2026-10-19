@@ -477,6 +477,7 @@ if (!app.isPackaged) loadDotEnv();
 const APP_NAME = WHALE_DESKTOP ? 'Whale Monitor' : 'Token Monitor';
 const APP_ICON_PATH = path.join(__dirname, '..', '..', 'assets', 'icon.png');
 const WINDOWS_APP_ICON_PATH = path.join(__dirname, '..', '..', 'assets', 'icon-win.png');
+const WHALE_APP_ICON_PATH = path.join(__dirname, 'whale', 'vendor', 'icon.png');
 
 // Electron's own documentation says a window given no icon falls back to the
 // executable's, and recommends ICO on Windows; electron-builder already
@@ -489,7 +490,7 @@ const WINDOWS_APP_ICON_PATH = path.join(__dirname, '..', '..', 'assets', 'icon-w
 // unpackaged run has no icon of ours inside electron.exe to inherit, so it names
 // the same full-bleed artwork the installer is built from.
 function appWindowIcon() {
-  if (WHALE_DESKTOP) return {icon: path.join(__dirname, 'whale', 'vendor', 'icon.png')};
+  if (WHALE_DESKTOP) return {icon: WHALE_APP_ICON_PATH};
   if (process.platform !== 'win32') return { icon: APP_ICON_PATH };
   return app.isPackaged ? {} : { icon: WINDOWS_APP_ICON_PATH };
 }
@@ -3191,7 +3192,7 @@ let registeredWindowToggleShortcut = '';
 let windowToggleShortcutRegistered = false;
 let defaultTrayIcon = null;
 function getDefaultTrayIcon() {
-  if (!defaultTrayIcon) defaultTrayIcon = buildTrayIcon();
+  if (!defaultTrayIcon) defaultTrayIcon = buildTrayIcon({iconPath: WHALE_DESKTOP ? WHALE_APP_ICON_PATH : undefined});
   return defaultTrayIcon;
 }
 const AGENT_PID_PATH = pidFilePath();
@@ -5067,6 +5068,10 @@ function updateTrayDisplay() {
   // Tooltip always shows a useful summary, even in icon-only mode where setTitle is blank.
   const tip = formatTrayText(visibleStats, 'both', currency, compactOptions);
   tray.setToolTip(`${APP_NAME} - ${tip}`);
+  if (WHALE_DESKTOP) {
+    tray.setImage(getDefaultTrayIcon());
+    return;
+  }
   // Icon: rendered bars image in bar modes, otherwise the app icon.
   let icon = null;
   if (barsImageMode || trayImageMode || customImageMode) {
@@ -6378,6 +6383,7 @@ function ensureTray() {
   if (!WHALE_DESKTOP && !shouldCreateTray(settings)) return false;
   if (tray && !tray.isDestroyed()) return;
   tray = createTray({
+    icon: WHALE_DESKTOP ? getDefaultTrayIcon() : undefined,
     onToggleWhale: () => whaleDesktop?.toggle(),
     getMenuState: () => {
       const codex = trayCodexMenuState();
