@@ -50,7 +50,7 @@ jobs:
           $version = $env:WHALE_BUILD_VERSION
           $tag = "v$version"
           $repo = $env:GITHUB_REPOSITORY
-          $notes = "Windows x64 独立小鲸鱼桌宠正式版。`n`n- 切换显示器移至统计与账户的设置页顶部，显示当前屏幕，单屏时禁用。`n- 设置界面采用桌宠一级菜单的浅色蓝字、圆角和紧凑控件风格，关闭后恢复统计页主题。`n- 任务完成提示改为「任务已完成 / 花费Token： / 本轮用量」三行，与今日Token共用字体和缩放样式，按气泡空间适配。`n- 单击分两行显示「今日Token」和用量数字，标题加大一档，字号随桌宠同比增大；英文和数字使用 Consolas，中文使用微软雅黑 UI。`n- 修复右键打开菜单时桌宠移位。`n- 启动只显示桌宠；菜单底部统计与账户替代原记账入口。`n- 安装版自动校验并安装更新；便携版检测到新版本后打开下载页。`n`n源提交：$env:GITHUB_SHA`n`n详见仓库 README.whale.md。"
+          $notes = "Windows x64 独立小鲸鱼桌宠正式版。`n`n- 切换显示器移至统计与账户的设置页顶部，显示当前屏幕，单屏时禁用。`n- 主页和设置统一采用桌宠一级菜单的白底蓝字、圆角风格；最小化与关闭按钮始终显示，时间范围按钮独立一行。`n- 任务完成提示改为「任务已完成 / 花费Token： / 本轮用量」三行，与今日Token共用字体和缩放样式，按气泡空间适配。`n- 单击分两行显示「今日Token」和用量数字，标题加大一档，字号随桌宠同比增大；英文和数字使用 Consolas，中文使用微软雅黑 UI。`n- 修复右键打开菜单时桌宠移位。`n- 启动只显示桌宠；菜单底部统计与账户替代原记账入口。`n- 安装版自动校验并安装更新；便携版检测到新版本后打开下载页。`n`n源提交：$env:GITHUB_SHA`n`n详见仓库 README.whale.md。"
           $notes | Set-Content -Path release-notes.txt -Encoding utf8
           $assets = @(
             "dist/whale/Whale-Monitor-$version-x64-nsis.exe",

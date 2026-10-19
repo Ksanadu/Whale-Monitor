@@ -1,6 +1,6 @@
-/* The standalone settings view shares the whale menu palette. Scope variables
-   to the open view so closing settings restores the user's statistics theme. */
-html.whale-desktop body:has(.shell.settings-open) {
+/* All standalone monitor views share the whale menu palette. Saved appearance
+   preferences and the original Token Monitor renderer remain untouched. */
+html.whale-desktop body {
   color-scheme: light;
   --glass-rgb: 255, 255, 255;
   --overlay-rgb: 32, 49, 112;
@@ -25,14 +25,43 @@ html.whale-desktop body:has(.shell.settings-open) {
   --number: #203170;
   --shadow: rgba(0, 0, 0, .18);
 }
-html.whale-desktop .shell.settings-open {
+html.whale-desktop .shell {
   border: 1px solid rgba(32, 49, 112, .35);
   border-radius: 10px;
   clip-path: inset(0 round 10px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
   font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif;
 }
-html.whale-desktop .shell.settings-open::before { display: none; }
+html.whale-desktop .shell::before { display: none; }
+html.whale-desktop .titlebar { align-items: flex-start; }
+html.whale-desktop .titlebar > div:first-child { padding-top: 6px; }
+html.whale-desktop .title-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  height: 64px;
+}
+html.whale-desktop .actions-hotspot { display: none; }
+html.whale-desktop .shell .window-actions {
+  position: static;
+  flex: 0 0 28px;
+  height: 28px;
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+  order: 0;
+}
+html.whale-desktop .shell .title-controls .tabs {
+  position: relative;
+  inset: auto;
+  flex: 0 0 30px;
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+  order: 1;
+}
+html.whale-desktop #closeButton:hover { border-color: #b93647; background: #b93647; color: #fff; }
 html.whale-desktop #settingsPanel {
   padding: 0 1px 4px;
   font: 12px/1.4 "Segoe UI", "Microsoft YaHei UI", sans-serif;
