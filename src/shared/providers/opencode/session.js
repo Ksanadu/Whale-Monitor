@@ -479,4 +479,67 @@ function readSessionEvents(sessionId, deps = {}) {
   return empty;
 }
 
-module.exports = { readSessionMeta, readSessionMetaForHome, readSessionEvents, resolveSessionMetadata };
+// Metadata-only completion projection. Content/tool output stays inside SQLite.
+function readCompletionSignals(deps = {}) {
+  const sqliteMod = resolveSqlite(deps), out = [];
+  if (!sqliteMod) return out;
+  for (const dbPath of resolvePaths(deps).slice(0, 16)) {
+    let db;
+    try {
+      db = openDb(dbPath, sqliteMod);
+      db.exec('BEGIN');
+      const currentSessions = new Set();
+      for (const shape of openCodeShapes(db)) {
+        if (!shape.readsMessages) continue;
+        const columns = tableColumns(db, shape.sessionTable);
+        if (!columns.has('parent_id')) continue; // Cannot prove root ownership.
+        const updated = columns.has('time_updated') ? 'time_updated' : 'time_created';
+        const sessions = db.prepare(`SELECT id FROM ${shape.sessionTable}
+          WHERE (parent_id IS NULL OR parent_id = '')
+          ${columns.has('time_archived') ? 'AND time_archived IS NULL' : ''}
+          ${columns.has('idle_outcome') ? "AND (idle_outcome IS NULL OR idle_outcome IN ('completed','success'))" : ''}
+          ORDER BY ${updated} DESC LIMIT ?`).all(deps.maxSessions || 128);
+        const messageColumns = tableColumns(db, shape.messageTable);
+        const order = messageColumns.has('seq') ? 'seq DESC' : `${createdMsExpr(messageColumns)} DESC, id DESC`;
+        const statement = db.prepare(`SELECT id, ${shape.role} AS role,
+          json_extract(data,'$.finish') AS finish, json_type(data,'$.error') AS error,
+          json_extract(data,'$.time.completed') AS completedAt,
+          json_extract(data,'$.agent') AS agent, json_extract(data,'$.summary') AS summary,
+          ${USAGE_COLUMNS_SQL} FROM ${shape.messageTable}
+          WHERE session_id = ? AND json_valid(data) ORDER BY ${order} LIMIT 512`);
+        for (const session of sessions) {
+          if (currentSessions.has(session.id)) continue;
+          const rows = statement.all(session.id);
+          if (!rows.length) continue;
+          currentSessions.add(session.id);
+          const partColumns = shape.contentInRow ? new Set() : tableColumns(db, 'part');
+          const subtaskUsers = partColumns.has('message_id') && partColumns.has('session_id') && partColumns.has('data')
+            ? new Set(db.prepare(`SELECT DISTINCT message_id FROM part WHERE session_id = ? AND json_valid(data)
+                AND json_extract(data,'$.type') = 'subtask' LIMIT 1024`).all(session.id).map(row => row.message_id)) : new Set();
+          let turn = '', failed = false, total = 0, known = false, candidate = null;
+          const finishTurn = () => { if (candidate && !failed) out.push(candidate); };
+          for (const row of rows.reverse()) {
+            if (row.role === 'user') { finishTurn(); turn = subtaskUsers.has(row.id) ? '' : row.id; failed = false; total = 0; known = false; candidate = null; continue; }
+            if (row.role === 'compaction') { turn = ''; candidate = null; continue; }
+            if (!turn || row.role !== 'assistant') continue;
+            if ((row.error && row.error !== 'null') || (row.finish && !['stop', 'tool-calls'].includes(row.finish))) failed = true;
+            if ([row.tInput, row.tOutput, row.tCacheRead, row.tCacheWrite].some(value => typeof value === 'number')) {
+              total += mapTokens(row).total;
+              known = true;
+            }
+            candidate = null;
+            if (row.finish !== 'stop' || failed || row.summary || /compaction|summari[sz]/i.test(row.agent || '')) continue;
+            const completedAt = Number(row.completedAt);
+            if (!(completedAt > 0)) continue;
+            candidate = {sessionId: String(session.id), key: String(turn), completedAt, tokens: known ? total : null};
+          }
+          finishTurn();
+        }
+      }
+    } catch (_) { /* Unsupported/locked stores provide no completion evidence. */ }
+    finally { if (db) { try { db.close(); } catch (_) {} } }
+  }
+  return out;
+}
+
+module.exports = { readSessionMeta, readSessionMetaForHome, readSessionEvents, resolveSessionMetadata, readCompletionSignals };

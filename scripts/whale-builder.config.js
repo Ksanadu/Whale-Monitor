@@ -27,5 +27,5 @@ module.exports = {
     artifactName: 'Whale-Monitor-${version}-${arch}-nsis.${ext}',
     createDesktopShortcut: true, shortcutName: 'Whale Monitor'},
   portable: {artifactName: 'Whale-Monitor-${version}-${arch}-portable.${ext}'},
-  files: [...packageJson.build.files, 'src/electron/whale/vendor/**/*', 'LICENSE', 'README.md', 'README.whale.md', 'docs/whale-desktop.md']
+  files: [...packageJson.build.files, 'src/electron/whale/vendor/**/*', 'LICENSE', 'README.md', 'README.whale.md', 'docs/whale-desktop.md', 'docs/whale-completions.md']
 };

@@ -137,7 +137,7 @@ function createLocalUsageSource(options = {}, deps = {}) {
     subscribing.add(thread.id);
     // Install metadata before resume: the server can notify while its reply
     // is in flight. No turn/configuration/approval request is ever sent.
-    threads.set(thread.id, { thread, local, baselinePending: true, turnModels: new Map() });
+    threads.set(thread.id, { thread, local, baselinePending: true, turnModels: new Map(), completionStarts: new Map() });
     try {
       await request('thread/resume', { threadId: thread.id, excludeTurns: true });
     } catch (_) {
@@ -189,6 +189,8 @@ function createLocalUsageSource(options = {}, deps = {}) {
       if (entry.turnModels.size > 32) entry.turnModels.delete(entry.turnModels.keys().next().value);
     }
     if (message.method === 'thread/tokenUsage/updated') {
+      const total = usageCounters(params.tokenUsage?.total)?.total;
+      if (Number.isFinite(total)) entry.completionTotal = total;
       if (shouldYield() || !store.claimObserver(owner)) { disconnect(); store.releaseObserver(owner); return; }
       if (store.observe({
         accountKey, thread: { ...entry.thread, model: entry.turnModels.get(turnId) || 'unknown' }, ...entry.local, turnId,
@@ -202,6 +204,21 @@ function createLocalUsageSource(options = {}, deps = {}) {
         && usageCounters(params.tokenUsage?.last)) entry.baselinePending = false;
     } else if (message.method === 'turn/started' || message.method === 'turn/completed') {
       const ended = message.method === 'turn/completed';
+      if (options.onCompletion && typeof turnId === 'string' && turnId) {
+        if (!ended) {
+          entry.completionStarts.set(turnId, entry.completionTotal);
+          if (entry.completionStarts.size > 32) entry.completionStarts.delete(entry.completionStarts.keys().next().value);
+        } else {
+          const observedStart = entry.completionStarts.has(turnId);
+          const baseline = entry.completionStarts.get(turnId);
+          entry.completionStarts.delete(turnId);
+          if (observedStart && params.turn?.status === 'completed' && !params.turn.error) {
+            const difference = entry.completionTotal - baseline;
+            options.onCompletion({sessionId: params.threadId, key: turnId, completedAt: now().getTime(),
+              tokens: Number.isFinite(baseline) && Number.isSafeInteger(difference) && difference >= 0 ? difference : null});
+          }
+        }
+      }
       entry.thread.status = { type: ended ? 'idle' : 'active' };
       if (store.updateThread(accountKey, params.threadId, { turnEnded: ended })) changed();
     } else if (message.method === 'thread/name/updated') {

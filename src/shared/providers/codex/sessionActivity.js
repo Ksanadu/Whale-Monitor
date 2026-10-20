@@ -258,4 +258,5 @@ function projectSessionActivity(summary, activity, now = Date.now()) {
 }
 
 module.exports = { readT3Activity, readSessionActivity, projectSessionActivity,
+  discoverCompletionFiles: options => discoverFiles(options, new Map(), {}),
   readActivity: readSessionActivity, projectActivity: projectSessionActivity };

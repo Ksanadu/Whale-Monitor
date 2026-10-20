@@ -1942,7 +1942,7 @@ function playTaskEndSound(opts) {
     }
     if (!url) return
     // v861：跨实例去重（见 soundClaimOnce）；试听（opts.preview）不节流
-    if (!(o && o.preview) && !soundClaimOnce('frag:' + String(o.sel || ''))) return
+    if (!(o && o.preview) && !soundClaimOnce('frag:' + String(o.sel || '') + (o.eventId ? ':' + o.eventId : ''))) return
     var a = dshwvSound(url)
     if (altUrl) a._alt = altUrl
     // v778：音量统一走解析器（②区「提示音量」显式设置过就用它，否则跟随①区「按压音量」）
@@ -22407,7 +22407,19 @@ function pollLastTurn() {
     lastCostPolling = false
   })
 }
-setInterval(function () { pollLastTurn(); pollWaitState() }, 1000)
+var pollAgentCompletions = window.whaleDesktop && window.whaleAgentCompletions
+  ? window.whaleAgentCompletions.createCompletionPoller({
+    load: async function (after) {
+      var response = await fetch('/dsh-whale/agent-completions.json?after=' + after, {cache: 'no-store', signal: AbortSignal.timeout(15000)})
+      if (!response.ok) throw new Error('agent-completions request failed')
+      return response.json()
+    },
+    onComplete: function (event) {
+      playTaskEndSound({eventId: event.id})
+      showCostBubble(0, event.provider, event.tokens)
+    }
+  }) : function () {}
+setInterval(function () { pollLastTurn(); pollWaitState(); pollAgentCompletions() }, 1000)
 }
 // 主界面检测通过（或稍后由 MutationObserver 检测到）后执行挂件初始化；非主界面不启动
 try { dshwTryStart(true) } catch (err) {}

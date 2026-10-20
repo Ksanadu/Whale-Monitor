@@ -23,6 +23,7 @@ const fs = require('node:fs');
 const { isCompressedCodexTranscript, readCompressedCodexTranscript } = require('./transcript');
 const { normalizeSessionContext } = require('../../sessionContext');
 const { createPromptCacheState, applyPromptCacheEntry } = require('../../sessionPromptCache');
+const { applyCompletionRecord } = require('./completion');
 
 const TAIL_READ_BUDGETS = [256 * 1024, 1024 * 1024];
 const TURN_READ_MAX_BYTES = 8 * 1024 * 1024;
@@ -45,6 +46,7 @@ function applyLine(state, line, position, contextStart, cacheStart) {
   let entry;
   try { entry = JSON.parse(line.toString('utf8')); } catch (_) { return; }
   if (!entry || typeof entry !== 'object') return;
+  applyCompletionRecord(state, entry, position);
   const payload = entry.payload && typeof entry.payload === 'object' ? entry.payload : entry;
   if (payload.type === 'token_count' && payload.info && position >= contextStart) {
     const context = contextFromInfo(payload.info);

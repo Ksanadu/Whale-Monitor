@@ -6,6 +6,7 @@ const {Readable} = require('node:stream');
 const {pathToFileURL} = require('node:url');
 const {CredentialStore} = require('../../shared/credentialStore');
 const {VERSION, RELEASES_URL} = require('./releaseInfo');
+const {createCompletionBuffer} = require('./completionBuffer');
 
 function createWhaleCredentials(dataDir) {
   const store = new CredentialStore(dataDir);
@@ -47,6 +48,7 @@ function usageProjection(payload, stats) {
 async function createWhaleService({dataDir, getStats = () => null, definition}) {
   fs.mkdirSync(dataDir, {recursive: true});
   const routes = new Map(), listeners = new Map(), disposers = [];
+  const completions = createCompletionBuffer();
   const ctx = {
     credentials: createWhaleCredentials(dataDir),
     connection: {requestRejection: () => null},
@@ -82,9 +84,16 @@ async function createWhaleService({dataDir, getStats = () => null, definition}) 
   }
   definition.apply(ctx);
   return {
-    emit(name, ...args) { for (const fn of listeners.get(name) || []) fn(...args); },
+    emit(name, ...args) {
+      if (name === 'agent/completed') completions.push(args[0]);
+      for (const fn of listeners.get(name) || []) fn(...args);
+    },
     async request(url, {method = 'GET', body, signal} = {}) {
       const pathname = new URL(url, 'http://localhost').pathname;
+      if (pathname === '/dsh-whale/agent-completions.json') {
+        if (method !== 'GET') return new Response('Method not allowed', {status: 405});
+        return Response.json(completions.read(Number(new URL(url, 'http://localhost').searchParams.get('after') || 0)));
+      }
       // Never advertise/install a DSH plugin update into the standalone app.
       if (pathname === '/dsh-whale/update-check.json') return Response.json({ok: true,
         current: VERSION, latest: VERSION, hasUpdate: false,

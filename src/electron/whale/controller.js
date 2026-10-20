@@ -87,7 +87,8 @@ async function createWhaleDesktop({app, BrowserWindow, ipcMain, protocol, screen
           body: ['GET', 'HEAD'].includes(request.method) ? null : Buffer.from(await request.arrayBuffer())}));
       } catch (error) { logger(error.message); return new Response('Local operation failed', {status: 500}); }
     }
-    const files = {'/': 'index.html', '/desktop/desktop.js': 'desktop.js', '/desktop/desktop.css': 'desktop.css', '/desktop/usage.js': 'usage.js'};
+    const files = {'/': 'index.html', '/desktop/desktop.js': 'desktop.js', '/desktop/desktop.css': 'desktop.css', '/desktop/usage.js': 'usage.js',
+      '/desktop/completions.js': 'completions.js'};
     const file = files[url.pathname];
     if (!file || request.method !== 'GET') return new Response('Not found', {status: 404});
     const types = {'.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8'};
@@ -115,7 +116,9 @@ async function createWhaleDesktop({app, BrowserWindow, ipcMain, protocol, screen
   ipcMain.on('whale:settingsReply', onSettingsReply);
   screen.on('display-removed', place);
   screen.on('display-metrics-changed', place);
-  const events = new Worker(path.join(__dirname, 'localEventsWorker.js'));
+  const events = new Worker(path.join(__dirname, 'localEventsWorker.js'), {
+    workerData: {completionStateFile: path.join(dataDir, 'agent-completions-seen.json')}
+  });
   events.on('message', message => {
     if (disposed) return;
     if (message.error) logger(message.error);
@@ -136,7 +139,13 @@ async function createWhaleDesktop({app, BrowserWindow, ipcMain, protocol, screen
       disposed = true;
       for (const pending of commands.values()) { clearTimeout(pending.timer); pending.reject(new Error('桌宠已退出')); }
       commands.clear();
-      void events.terminate(); service.dispose();
+      // Let the desktop subscription abort its bounded process probe/socket;
+      // a stuck observer must still never prevent application shutdown.
+      const terminateTimer = setTimeout(() => void events.terminate(), 3000);
+      terminateTimer.unref?.();
+      events.once('exit', () => clearTimeout(terminateTimer));
+      try { events.postMessage('stop'); } catch (_) { void events.terminate(); }
+      service.dispose();
       for (const [name, fn] of [['whale:regions', onRegions], ['whale:openMonitor', onOpenMonitor], ['whale:settingsReply', onSettingsReply]]) ipcMain.removeListener(name, fn);
       screen.removeListener('display-removed', place); screen.removeListener('display-metrics-changed', place);
       protocol.unhandle('whale');

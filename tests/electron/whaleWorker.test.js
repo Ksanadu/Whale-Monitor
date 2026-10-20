@@ -14,7 +14,8 @@ test('the standalone observer reads local files in a worker without a server', a
   const file = path.join(dir, 'session.jsonl');
   fs.writeFileSync(file, JSON.stringify({type: 'session', id: 'local', createdAt: 1}) + '\n');
   const worker = new Worker(path.resolve(__dirname, '../../src/electron/whale/localEventsWorker.js'),
-    {workerData: {sessionsRoot: root, intervalMs: 25}});
+    {workerData: {sessionsRoot: root, intervalMs: 25, home: root,
+      env: {HOME: root, USERPROFILE: root, CODEX_HOME: path.join(root, '.codex')}}});
   t.after(async () => { await worker.terminate(); fs.rmSync(root, {recursive: true, force: true}); });
   const messages = [];
   worker.on('message', message => messages.push(message));
@@ -27,4 +28,7 @@ test('the standalone observer reads local files in a worker without a server', a
   assert.equal(event.name, 'session/event');
   assert.equal(event.args[0].id, 'local');
   assert.equal(event.args[1].data.reason.kind, 'completed');
+  const exited = once(worker, 'exit', {signal: timeout});
+  worker.postMessage('stop');
+  assert.equal((await exited)[0], 0, 'normal shutdown closes all observers without forced termination');
 });
