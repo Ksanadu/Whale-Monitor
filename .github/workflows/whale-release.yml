@@ -38,7 +38,7 @@ jobs:
           "WHALE_BUILD_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - run: npm run lint
       - name: Verify desktop and updater regressions
-        run: node --test tests/electron/whale*.test.js tests/electron/aboutSettings.test.js tests/electron/appUpdateState.test.js tests/electron/appUpdatePresentation.test.js tests/electron/updateInstallQuit.test.js tests/electron/tray.test.js tests/electron/windowLifecycle.test.js tests/electron/statsRenderScheduler.test.js
+        run: node --test tests/electron/whale*.test.js tests/electron/aboutSettings.test.js tests/electron/appUpdateState.test.js tests/electron/appUpdatePresentation.test.js tests/electron/updateInstallQuit.test.js tests/electron/tray.test.js tests/electron/windowLifecycle.test.js tests/electron/statsRenderScheduler.test.js tests/shared/codexLocalUsage.test.js
       - run: npm run dist:whale:win
       - name: Verify installer hashes and update channels
         run: node scripts/verify-whale-release.js
@@ -50,7 +50,7 @@ jobs:
           $version = $env:WHALE_BUILD_VERSION
           $tag = "v$version"
           $repo = $env:GITHUB_REPOSITORY
-          $notes = "Windows x64 独立小鲸鱼桌宠正式版。`n`n- 新增 Codex、OpenCode、ZCode 和 Antigravity 本机任务完成提醒，复用现有结束音、音量和完成气泡开关。`n- 仅提醒可确认成功的根任务，过滤错误、取消、子任务和中间工具步骤。`n- 启动时静默对齐历史，完成事件持久化去重；同批多项完成保留各自 Token，未知数量显示「—」。`n- 独立读取本机完成信号，无需 DSH 后端；不修改 Token 用量账本。`n- Codex 桌面订阅需要可识别的本机执行器；无法校验本机归属的云端任务不在支持范围。`n- 保留独立桌宠外观、统计与账户、托盘及安装版自动更新；便携版打开最新 Release 页面。`n`n源提交：$env:GITHUB_SHA`n`n来源规则和限制见 docs/whale-completions.md。"
+          $notes = "Windows x64 独立小鲸鱼桌宠正式版。`n`n- 修复 Codex 秒级完成时间被当作毫秒，导致新完成被误判为历史事件的问题；兼容秒、毫秒和 ISO 时间。`n- 修复 Windows 本机执行器启动参数含转义引号时无法识别的问题。`n- 修复 OpenCode 2 桌面版 succeeded 成功状态被过滤，导致对话结束不提醒的问题；检查同轮 idle 取消/失败边界。`n- 支持 Codex、OpenCode、ZCode 和 Antigravity 的本机成功任务提醒，沿用已有结束音和气泡开关。`n- 过滤错误、取消、子任务与中间工具步骤，启动静默对齐，完成事件持久化去重。`n- 未知本轮 Token 显示「—」，不改变 Token 用量统计，无需 DSH 后端。`n- 安装版自动校验更新，便携版打开最新 Release 页面。`n`n源提交：$env:GITHUB_SHA`n`n来源规则和限制见 docs/whale-completions.md。"
           $notes | Set-Content -Path release-notes.txt -Encoding utf8
           $assets = @(
             "dist/whale/Whale-Monitor-$version-x64-nsis.exe",

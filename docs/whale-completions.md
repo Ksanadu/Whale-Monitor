@@ -4,9 +4,9 @@
 
 ## 来源与成功条件
 
-- Codex 本地 rollout：复用 provider 的有界增量索引与来源标识，只接收 `task_complete`；排除中断、显式错误及 subagent/guardian/父会话标识。事件按原生 turn id 去重；本轮 Token 使用同一轮开始/完成之间的累计差，缺少基线时留空。发现范围沿用 provider 的当前/前一天目录及近期本地线程目录索引，不递归扫描全部历史。
-- Codex 桌面本机执行：复用已有 App Server 只读订阅及本机 `exec-server --environment-id` 校验；不使用 cwd 推断设备归属。只通知订阅后观察到开始、随后明确 `status=completed` 且无错误的轮次。云端、其他电脑、子任务、临时线程与已有原生 rollout 的任务均不订阅；连接重建不回放历史。需要本机已登录 Codex 且有可识别的本机执行器，没有执行器时不连接服务器。该通道不打开用量账本或竞争用量采集租约，不改变 Codex Dots 用量采集开关，也不启动任务、发送输入或回答审批。当前本机没有合格执行器，实机检查确认保持等待且没有订阅；协议成功/失败路径使用隔离 socket 测试验证。
-- OpenCode：只读现有 `opencode*.db`，沿用 provider 的当前/旧版存储识别和优先级。根会话的一轮用户输入以带完成时间、无错误的最终 `finish=stop` 为成功；`tool-calls`、错误、取消、输出截断、过滤、压缩摘要及子会话均不提示。同一用户轮的多次请求用量合并，保留原有 Token 口径。
+- Codex 本地 rollout：复用 provider 的有界增量索引与来源标识，只接收 `task_complete`；排除中断、显式错误及 subagent/guardian/父会话标识。完成时间兼容秒级数字/数字字符串、毫秒及 ISO 时间，统一为 epoch 毫秒后判断新事件。事件按原生 turn id 去重；本轮 Token 使用同一轮开始/完成之间的累计差，缺少基线时留空。发现范围沿用 provider 的当前/前一天目录及近期本地线程目录索引，不递归扫描全部历史。
+- Codex 桌面本机执行：复用已有 App Server 只读订阅及本机 `exec-server --environment-id` 校验；不使用 cwd 推断设备归属。只通知订阅后观察到开始、随后明确 `status=completed` 且无错误的轮次。云端、其他电脑、子任务、临时线程与已有原生 rollout 的任务均不订阅；连接重建不回放历史。需要本机已登录 Codex 且有可识别的本机执行器，没有执行器时不连接服务器。该通道不打开用量账本或竞争用量采集租约，不改变 Codex Dots 用量采集开关，也不启动任务、发送输入或回答审批。Windows 转义引号兼容修复后，实机已识别执行器并连接服务器，当前登录账户未返回匹配任务；订阅成功/失败路径使用隔离 socket 测试验证。本地 rollout 通道独立工作，不依赖该订阅。
+- OpenCode：只读现有 `opencode*.db`，沿用 provider 的当前/旧版存储识别和优先级。根会话的一轮用户输入以带完成时间、无错误的最终 `finish=stop` 为成功，兼容桌面版 `idle_outcome=succeeded`，并检查该轮 `idle` 消息的成功/取消边界；`tool-calls`、错误、取消、输出截断、过滤、压缩摘要及子会话均不提示。同一用户轮的多次请求用量合并，保留原有 Token 口径。
 - ZCode：只读 `~/.zcode/cli/db/db.sqlite` 的 `turn_usage`，只接收 `completed` 且无取消、错误、上下文超限或工具错误的根轮次；排除父会话及 workflow 子任务链接。旧版数据库没有 `turn_usage` 时使用兼容的消息完成投影。
 - Antigravity：只读 provider 已发现的 `conversation_summaries.db` 及对应 `conversations/<id>.db`。根会话必须明确空闲、未 killed、无未结束工作，并在本次用户输入之后以 DONE 的最终响应/通知/结束步骤收尾；该轮任何错误、取消、中断或错误消息都会抑制通知。只进入空闲或完成一个工具步骤不构成成功。枚举来自本机 language server 内嵌 protobuf 定义，不猜测数值。父会话与 nesting depth 排除子任务。
 

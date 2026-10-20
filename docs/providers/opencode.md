@@ -29,7 +29,7 @@ Do not label a merged row `Web` when any local-only window remains in it. Source
 
 ## Sessions
 
-`readCompletionSignals()` 为独立桌宠提供有界、只读的完成投影，仍由本模块识别两代存储。只输出根会话/用户轮身份、正常停止时间和同轮 Token 合计，不返回消息正文；错误/取消、工具调用、压缩摘要和未完成响应不能构成成功。当前消息优先于迁移前旧表，避免一次任务被两份存储重复提示。
+`readCompletionSignals()` 为独立桌宠提供有界、只读的完成投影，仍由本模块识别两代存储。只输出根会话/用户轮身份、正常停止时间和同轮 Token 合计，不返回消息正文；错误/取消、工具调用、压缩摘要和未完成响应不能构成成功。OpenCode 2 桌面版的成功状态是 `idle_outcome=succeeded`，同时识别同轮 `idle` 消息的 outcome，失败/取消的空闲边界会撤销该轮候选。当前消息优先于迁移前旧表，避免一次任务被两份存储重复提示。
 
 Session metadata and detail read OpenCode's local storage on demand. Keep profile/limits identity out of session attribution: local token sessions are not proof of the billing account selected by a credential profile.
 

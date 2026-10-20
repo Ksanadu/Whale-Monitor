@@ -36,6 +36,19 @@ test('Codex observes explicit successful turns, keeps individual token deltas an
   assert.deepEqual(readCodexSignals({codexFiles: [file]}), [], 'truncation cannot retain old completions');
 });
 
+test('Codex seconds, numeric strings and millisecond completion clocks all use epoch milliseconds', t => {
+  const root = fixture(t), at = 1792463476000;
+  for (const [index, completedAt] of [at / 1000, String(at / 1000), at].entries()) {
+    const file = path.join(root, `clock-${index}.jsonl`);
+    fs.writeFileSync(file, [
+      {type: 'session_meta', payload: {id: `clock-${index}`, source: 'cli'}},
+      {type: 'event_msg', timestamp: new Date(at).toISOString(), payload: {type: 'task_started', turn_id: 'turn'}},
+      {type: 'event_msg', timestamp: new Date(at).toISOString(), payload: {type: 'task_complete', turn_id: 'turn', completed_at: completedAt}}
+    ].map(JSON.stringify).join('\n'));
+    assert.equal(readCodexSignals({codexFiles: [file]})[0].completedAt, at);
+  }
+});
+
 function openCodeDb(t) {
   const cleanup = [], file = path.join(fixture(t, cleanup), 'opencode.db'), db = new DatabaseSync(file);
   cleanup.push(() => db.close());
@@ -59,6 +72,19 @@ test('OpenCode tool calls are not completions; a normal stop aggregates the whol
   assert.equal(rows.length, 1); assert.equal(rows[0].tokens, 40); assert.equal(rows[0].key, 'user');
   f.add('later-error', 'assistant', 4, {finish: 'stop', error: {name: 'MessageAbortedError'}, time: {completed: 210}});
   assert.deepEqual(readOpenCodeSignals({opencodeDbPaths: [f.file]}), [], 'a later error invalidates the same turn');
+});
+
+test('OpenCode 2 desktop succeeded idle outcomes admit completion and cancelled idle turns do not', t => {
+  const f = openCodeDb(t);
+  f.db.exec("UPDATE session_v2 SET idle_outcome='succeeded' WHERE id='root'");
+  f.add('user', 'user', 1, {});
+  f.add('final', 'assistant', 2, {finish: 'stop', time: {completed: 200}, tokens: {input: 20, output: 5}});
+  f.add('idle', 'idle', 3, {outcome: 'succeeded', time: {created: 201}});
+  assert.deepEqual(readOpenCodeSignals({opencodeDbPaths: [f.file]}).map(row => [row.key, row.tokens]), [['user', 25]]);
+  f.add('cancel-user', 'user', 4, {});
+  f.add('cancel-final', 'assistant', 5, {finish: 'stop', time: {completed: 300}});
+  f.add('cancel-idle', 'idle', 6, {outcome: 'cancelled', time: {created: 301}});
+  assert.deepEqual(readOpenCodeSignals({opencodeDbPaths: [f.file]}).map(row => row.key), ['user']);
 });
 
 test('OpenCode refuses truncated, filtered, compaction and unfinished responses', t => {

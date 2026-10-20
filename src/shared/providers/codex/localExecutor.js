@@ -11,7 +11,9 @@ function executorIdsFromProcesses(text) {
   // Desktop versions can put global config overrides before the subcommand.
   // Admit only assignment-valued -c/--config options, not arbitrary argv which
   // could contain an exec-server command as another subcommand's argument.
-  const assignment = `(?:[A-Za-z0-9_.-]+=(?:[^\\s"']|"[^"]*"|'[^']*')+|"[A-Za-z0-9_.-]+=[^"]*"|'[A-Za-z0-9_.-]+=[^']*')`;
+  // Windows wraps an entire assignment and escapes the TOML value's quotes.
+  const quotedAssignment = String.raw`"[A-Za-z0-9_.-]+=(?:[^"\\\r\n]|\\.)*"`;
+  const assignment = `(?:[A-Za-z0-9_.-]+=(?:[^\\s"']|"[^"]*"|'[^']*')+|${quotedAssignment}|'[A-Za-z0-9_.-]+=[^']*')`;
   const executor = new RegExp(`^\\s*(?:"(?:[^"]*[\\\\/])?codex(?:\\.exe)?"|(?:[^\\s"]*[\\\\/])?codex(?:\\.exe)?)(?:\\s+(?:-c|--config)\\s+${assignment})*\\s+exec-server\\s`);
   for (const line of String(text || '').split(/\r?\n/)) {
     const command = line.match(executor);

@@ -1,7 +1,8 @@
 'use strict';
 
 function timestamp(value) {
-  const parsed = typeof value === 'number' ? value : Date.parse(value || '');
+  const numeric = typeof value === 'number' || (typeof value === 'string' && /^\d+(?:\.\d+)?$/.test(value));
+  const parsed = numeric ? Number(value) * (Number(value) < 1e12 ? 1000 : 1) : Date.parse(value || '');
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 

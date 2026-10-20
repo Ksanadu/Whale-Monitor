@@ -497,7 +497,7 @@ function readCompletionSignals(deps = {}) {
         const sessions = db.prepare(`SELECT id FROM ${shape.sessionTable}
           WHERE (parent_id IS NULL OR parent_id = '')
           ${columns.has('time_archived') ? 'AND time_archived IS NULL' : ''}
-          ${columns.has('idle_outcome') ? "AND (idle_outcome IS NULL OR idle_outcome IN ('completed','success'))" : ''}
+          ${columns.has('idle_outcome') ? "AND (idle_outcome IS NULL OR idle_outcome IN ('completed','success','succeeded'))" : ''}
           ORDER BY ${updated} DESC LIMIT ?`).all(deps.maxSessions || 128);
         const messageColumns = tableColumns(db, shape.messageTable);
         const order = messageColumns.has('seq') ? 'seq DESC' : `${createdMsExpr(messageColumns)} DESC, id DESC`;
@@ -505,6 +505,7 @@ function readCompletionSignals(deps = {}) {
           json_extract(data,'$.finish') AS finish, json_type(data,'$.error') AS error,
           json_extract(data,'$.time.completed') AS completedAt,
           json_extract(data,'$.agent') AS agent, json_extract(data,'$.summary') AS summary,
+          json_extract(data,'$.outcome') AS outcome,
           ${USAGE_COLUMNS_SQL} FROM ${shape.messageTable}
           WHERE session_id = ? AND json_valid(data) ORDER BY ${order} LIMIT 512`);
         for (const session of sessions) {
@@ -521,6 +522,10 @@ function readCompletionSignals(deps = {}) {
           for (const row of rows.reverse()) {
             if (row.role === 'user') { finishTurn(); turn = subtaskUsers.has(row.id) ? '' : row.id; failed = false; total = 0; known = false; candidate = null; continue; }
             if (row.role === 'compaction') { turn = ''; candidate = null; continue; }
+            if (row.role === 'idle') {
+              if (!['succeeded', 'completed', 'success'].includes(row.outcome)) { failed = true; candidate = null; }
+              continue;
+            }
             if (!turn || row.role !== 'assistant') continue;
             if ((row.error && row.error !== 'null') || (row.finish && !['stop', 'tool-calls'].includes(row.finish))) failed = true;
             if ([row.tInput, row.tOutput, row.tCacheRead, row.tCacheWrite].some(value => typeof value === 'number')) {

@@ -105,6 +105,15 @@ test('desktop global config overrides preserve strict executor identification', 
   assert.equal(executorIdsFromProcesses('/app/codex -c example="--environment-id wrong" exec-server --remote https://registry.test/api').size, 0);
 });
 
+test('Windows quoted config assignments retain escaped quotes without hiding the executor', () => {
+  const command = String.raw`"C:\Program Files\Codex\codex.exe" -c "forced_login_method=\"chatgpt\"" -c "example=\"two words\"" exec-server --remote https://registry.test/api --environment-id executor-windows`;
+  assert.deepEqual([...executorIdsFromProcesses(command)], ['executor-windows']);
+  for (const args of [String.raw`-c "example=\"exec-server --environment-id wrong\"" app-server`,
+    String.raw`-c "example=\"unterminated exec-server`]) {
+    assert.equal(executorIdsFromProcesses(`"C:\\Codex\\codex.exe" ${args} --environment-id wrong`).size, 0);
+  }
+});
+
 test('canonical input excludes cached tokens; reasoning remains a subset of output', () => {
   assert.deepEqual(usageCounters(LAST), { input: 44911, cacheRead: 105216, cacheWrite: 0, output: 52, reasoning: 36, total: 150179 });
   assert.equal(usageCounters({ ...LAST, totalTokens: LAST.totalTokens + 36 }), null);
