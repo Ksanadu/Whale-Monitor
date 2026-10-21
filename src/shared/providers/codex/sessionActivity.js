@@ -42,7 +42,7 @@ function localDayParts(clock, offset = 0) {
   return [String(date.getFullYear()), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')];
 }
 
-function discoverFilesUncached(options, activity, summary) {
+function discoverFilesUncached(options, activity, summary, completionDiscovery = false) {
   const files = new Map();
   const roots = sessionRoots(options);
   const realRoots = roots.flatMap((root) => {
@@ -50,7 +50,7 @@ function discoverFilesUncached(options, activity, summary) {
   });
   const accepted = new Set();
   const now = Number(new Date(options.now ?? Date.now()));
-  const accept = (file, catalogActive = false) => {
+  const accept = (file, catalogActive = false, recentCompletionCatalog = false) => {
     if (files.size >= MAX_SESSIONS || !/^rollout-.+\.jsonl(?:\.zst)?$/.test(path.basename(file))) return;
     file = preferredCodexSessionFile(file);
     if (!file) return;
@@ -65,11 +65,11 @@ function discoverFilesUncached(options, activity, summary) {
       accepted.add(real);
       const stat = fs.statSync(real);
       if (!stat.isFile() || stat.mtimeMs > now + 1000) return;
-      if (now - stat.mtimeMs > RUNNING_WINDOW_MS && !catalogActive
+      if (now - stat.mtimeMs > RUNNING_WINDOW_MS && !catalogActive && !recentCompletionCatalog
         && ![...activity.keys()].some((nativeId) => id.includes(nativeId))) return;
       const nativeId = nativeIdForFile(real);
       const reading = activity.get(nativeId);
-      if (now - stat.mtimeMs > RUNNING_WINDOW_MS && !['running', 'waiting'].includes(reading?.state)) return;
+      if (now - stat.mtimeMs > RUNNING_WINDOW_MS && !recentCompletionCatalog && !['running', 'waiting'].includes(reading?.state)) return;
       files.set(id, { file: real, sourcePath: file,
         sourceSignature: `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`,
         nativeId, lastUsedAt: new Date(stat.mtimeMs).toISOString() });
@@ -81,10 +81,14 @@ function discoverFilesUncached(options, activity, summary) {
     try {
       db = openDb(file, sqlite);
       const ids = [...activity.keys()];
-      const rows = db.prepare(`SELECT id, rollout_path FROM threads
+      const rows = db.prepare(`SELECT id, rollout_path, updated_at FROM threads
         WHERE updated_at >= ? ${ids.length ? `OR id IN (${ids.map(() => '?').join(',')})` : ''}
         ORDER BY updated_at DESC LIMIT ?`).all(Math.floor((now - RUNNING_WINDOW_MS) / 1000), ...ids, MAX_SESSIONS);
-      for (const row of rows) if (typeof row.rollout_path === 'string') accept(row.rollout_path, activity.has(row.id));
+      // Windows can retain an open rollout's old LastWriteTime while its size
+      // and the native catalog advance. Catalog recency admits a completion
+      // candidate only; the transcript still has to prove a successful new turn.
+      for (const row of rows) if (typeof row.rollout_path === 'string') accept(row.rollout_path, activity.has(row.id),
+        completionDiscovery && row.updated_at * 1000 >= now - RUNNING_WINDOW_MS && row.updated_at * 1000 <= now + 1000);
     } catch (_) { /* Date-folder discovery also works without a native catalog. */ }
     finally { if (db) { try { db.close(); } catch (_) {} } }
   }
@@ -258,5 +262,5 @@ function projectSessionActivity(summary, activity, now = Date.now()) {
 }
 
 module.exports = { readT3Activity, readSessionActivity, projectSessionActivity,
-  discoverCompletionFiles: options => discoverFiles(options, new Map(), {}),
+  discoverCompletionFiles: options => discoverFilesUncached(options, new Map(), {}, true),
   readActivity: readSessionActivity, projectActivity: projectSessionActivity };

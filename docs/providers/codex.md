@@ -37,7 +37,7 @@ Dots session details preserve each observed request's model and token buckets th
 
 ## Session metadata and context
 
-Whale Monitor 完成观察复用同一 `sessionContext` 索引中的有界 `completions` 元数据，保留原生 turn id、完成时间及有基线时的累计 Token 差；不会将这些字段加入统计 wire record。`sessionIdentity` 额外提供 subagent/guardian 判定，普通 native id 调用保持不变。桌面来源可提供 `onCompletion` 回调，只接受订阅后观察到开始且明确成功的本机轮次；独立桌宠以无账本的只读订阅使用它，不改变上述用量采集的 opt-in/租约语义。具体边界见 [独立完成提醒](../whale-completions.md)。
+Whale Monitor 完成观察复用同一 `sessionContext` 索引中的有界 `completions` 元数据，保留原生 turn id、完成时间及有基线时的累计 Token 差；不会将这些字段加入统计 wire record。`sessionIdentity` 额外提供 subagent/guardian 判定，普通 native id 调用保持不变。桌面来源可提供 `onCompletion` 回调，只接受订阅后观察到开始且明确成功的本机轮次；独立桌宠以无账本的只读订阅使用它，不改变上述用量采集的 opt-in/租约语义。完成提醒使用专用的近期目录索引候选策略：Windows 写句柄未关闭时文件 mtime 可保持旧值，近期 catalog 仍允许受限路径进入解析；只有日志中的新成功轮次才能通知，索引刷新本身不触发声音，也不改变普通 activity 的新鲜度规则。具体边界见 [独立完成提醒](../whale-completions.md)。
 
 The rollout index tracks native `request_user_input` calls by `call_id`; a matching result (including an error), new turn, completion or abort clears waiting. Only `waitingForInput` is published, without question content or call ids. Transcript freshness bounds this signal to ten minutes; it does not prove client liveness. Native approval waiting and asynchronous questions require a reliable client-owned pending/resolution source. Shell escalation arguments, an asynchronous `accepted` result and model completion cannot establish whether a UI request is pending.
 

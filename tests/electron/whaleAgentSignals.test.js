@@ -49,6 +49,35 @@ test('Codex seconds, numeric strings and millisecond completion clocks all use e
   }
 });
 
+test('Codex resumed historical rollouts with stale Windows mtime still notify from a recent catalog entry', t => {
+  const cleanup = [], home = fixture(t, cleanup), at = Date.parse('2026-10-21T07:54:18Z');
+  const dir = path.join(home, '.codex/sessions/2026/10/01'); fs.mkdirSync(dir, {recursive: true});
+  const file = path.join(dir, 'rollout-2026-10-01T00-00-00-root.jsonl');
+  const entry = (type, extra = {}) => ({type: 'event_msg', timestamp: new Date(at).toISOString(), payload: {type, ...extra}});
+  const header = {type: 'session_meta', payload: {id: 'root', source: 'vscode'}};
+  fs.writeFileSync(file, JSON.stringify(header) + '\n');
+  const stale = new Date(at - 40 * 60000); fs.utimesSync(file, stale, stale);
+  const db = new DatabaseSync(path.join(home, '.codex/state_5.sqlite')); cleanup.push(() => db.close());
+  db.exec('CREATE TABLE threads(id TEXT, rollout_path TEXT, updated_at INTEGER)');
+  db.prepare('INSERT INTO threads VALUES(?,?,?)').run('root', file, at / 1000);
+  const options = {home, env: {}, now: at};
+  const emitted = [], observer = createAgentWhaleEvents({now: () => at - 1000,
+    readers: {codex: () => readCodexSignals(options)}, emit: (...args) => emitted.push(args)});
+  observer.scan();
+  fs.appendFileSync(file, [entry('task_started', {turn_id: 'fresh'}), entry('task_complete', {turn_id: 'fresh', completed_at: at / 1000})].map(JSON.stringify).join('\n') + '\n');
+  fs.utimesSync(file, stale, stale);
+  assert.equal(readCodexSignals(options).length, 1, 'discovery uses catalog recency even while the open file retains an old mtime');
+  observer.scan(); observer.scan(); assert.equal(emitted.length, 1);
+  db.prepare('UPDATE threads SET updated_at=?').run(at / 1000 + 1);
+  observer.scan(); assert.equal(emitted.length, 1, 'catalog-only refresh cannot repeat an old completion');
+  const outside = path.join(home, 'rollout-outside.jsonl'); fs.copyFileSync(file, outside);
+  db.prepare('UPDATE threads SET rollout_path=?').run(outside);
+  assert.deepEqual(readCodexSignals(options), [], 'fresh catalog cannot admit a file outside configured session roots');
+  db.prepare('UPDATE threads SET rollout_path=?').run(file);
+  db.prepare('UPDATE threads SET updated_at=?').run((at - 20 * 60000) / 1000);
+  assert.deepEqual(readCodexSignals(options), [], 'an old catalog and old file remain outside discovery');
+});
+
 function openCodeDb(t) {
   const cleanup = [], file = path.join(fixture(t, cleanup), 'opencode.db'), db = new DatabaseSync(file);
   cleanup.push(() => db.close());
