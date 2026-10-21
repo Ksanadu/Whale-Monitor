@@ -262,7 +262,7 @@ test('Widget demand gate, startup arm and quit stop are wired into the snapshot 
   );
   assert.match(demandSource, /macWidgetDemand\.start\(\);/);
 
-  const readyStart = mainSource.indexOf('app.whenReady().then(() => {');
+  const readyStart = mainSource.search(/app\.whenReady\(\)\.then\((?:async )?\(\) => \{/);
   const readyEnd = mainSource.indexOf("ipcMain.handle('settings:get'", readyStart);
   const readySource = mainSource.slice(readyStart, readyEnd);
   assert.match(readySource, /ensureMacWidgetDemand\(\);\s*startMode\(\);/);
@@ -274,14 +274,14 @@ test('Widget demand gate, startup arm and quit stop are wired into the snapshot 
 });
 
 test('starts the runtime immediately and holds only Widget publication until host registration settles', () => {
-  const readyStart = mainSource.indexOf('app.whenReady().then(() => {');
+  const readyStart = mainSource.search(/app\.whenReady\(\)\.then\((?:async )?\(\) => \{/);
   const readyEnd = mainSource.indexOf("ipcMain.handle('settings:get'", readyStart);
   assert.ok(readyStart >= 0 && readyEnd > readyStart, 'ready callback should exist');
   const readySource = mainSource.slice(readyStart, readyEnd);
   const settingsIndex = readySource.indexOf('ensureSettingsLoaded();');
   const supportIndex = readySource.indexOf('const widgetRuntime = macWidgetRuntimeSupport({');
   const recoveryStartIndex = readySource.indexOf('const widgetRecovery = widgetRuntimeSupported');
-  const windowIndex = readySource.indexOf('createWindow();');
+  const windowIndex = readySource.indexOf('createWindow(undefined, {initiallyHidden: WHALE_DESKTOP});');
   const modeIndex = readySource.indexOf('startMode();');
   const recoveryCompletionIndex = readySource.indexOf('void widgetRecovery.finally(() => {');
   assert.ok(settingsIndex >= 0 && supportIndex > settingsIndex && recoveryStartIndex > supportIndex);

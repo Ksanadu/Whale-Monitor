@@ -15,6 +15,16 @@
     preferenceEnabled = false,
     updateState = null
   } = {}) {
+    if (updateState?.whaleDesktop) {
+      const portable = updateState.updateMode === 'portable';
+      const available = portable || updateState.installSupported === true;
+      return {checked: available && Boolean(preferenceEnabled), disabled: !available || Boolean(updateState.installBusy),
+        unavailable: !available, descriptionKey: 'settings.appUpdate.automaticDescription',
+        description: !available ? '开发运行不自动更新。' : updateState.installRetryBlocked
+          ? '本次自动安装未完成，请重启小鲸鱼后重试，或打开 Release 手动安装。' : portable
+          ? '检测新版本后自动打开 Release 下载页，同一版本只打开一次。'
+          : '自动下载并校验新版本，完成后自动安装并重启小鲸鱼。'};
+    }
     const supportKnown = typeof updateState?.installSupported === 'boolean';
     const supported = supportKnown && updateState.installSupported;
     const busy = Boolean(updateState?.installBusy);

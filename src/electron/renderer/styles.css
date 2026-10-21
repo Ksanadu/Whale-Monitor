@@ -1161,6 +1161,8 @@ span.settings-note.settings-item-desc {
 .settings-section-icon-sync { --settings-section-icon-url: url("icons/settings/sync.svg"); }
 .settings-section-icon-subscriptions { --settings-section-icon-url: url("icons/settings/subscriptions.svg"); }
 .settings-section-icon-appearance { --settings-section-icon-url: url("icons/settings/appearance.svg"); }
+.settings-section-icon-whale { --settings-section-icon-url: url("icons/settings/whale.svg"); }
+.settings-section-icon-about { --settings-section-icon-url: url("icons/settings/about.svg"); }
 .cursor-settings-toggle {
   width: 100%;
   padding: 0;

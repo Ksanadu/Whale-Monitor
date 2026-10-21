@@ -6,6 +6,11 @@ const os = require('node:os');
 const path = require('node:path');
 const { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, Notification, powerMonitor, screen, session, shell, systemPreferences } = require('electron');
 const { autoUpdater } = require('electron-updater');
+const {createWhaleDesktop, WHALE_CSP} = require('./whale/controller');
+const WHALE_DESKTOP = process.env.WHALE_DESKTOP === '1';
+let whaleDesktop = null;
+const {createWhaleUpdater, installationKind, initializeWhaleUpdatePreference} = require('./whale/updater');
+let whaleAppUpdater = null;
 const { defaultDeviceId, generateHubSecret, lanIpv4Addresses, loadDotEnv, pidFilePath, readJson, sharedDataDir } = require('../shared/config');
 const {
   CredentialStore,
@@ -469,9 +474,10 @@ const { isLightHex } = require('./renderer/themePresets');
 
 if (!app.isPackaged) loadDotEnv();
 
-const APP_NAME = 'Token Monitor';
+const APP_NAME = WHALE_DESKTOP ? 'Whale Monitor' : 'Token Monitor';
 const APP_ICON_PATH = path.join(__dirname, '..', '..', 'assets', 'icon.png');
 const WINDOWS_APP_ICON_PATH = path.join(__dirname, '..', '..', 'assets', 'icon-win.png');
+const WHALE_APP_ICON_PATH = path.join(__dirname, 'whale', 'vendor', 'icon.png');
 
 // Electron's own documentation says a window given no icon falls back to the
 // executable's, and recommends ICO on Windows; electron-builder already
@@ -484,6 +490,7 @@ const WINDOWS_APP_ICON_PATH = path.join(__dirname, '..', '..', 'assets', 'icon-w
 // unpackaged run has no icon of ours inside electron.exe to inherit, so it names
 // the same full-bleed artwork the installer is built from.
 function appWindowIcon() {
+  if (WHALE_DESKTOP) return {icon: WHALE_APP_ICON_PATH};
   if (process.platform !== 'win32') return { icon: APP_ICON_PATH };
   return app.isPackaged ? {} : { icon: WINDOWS_APP_ICON_PATH };
 }
@@ -546,7 +553,7 @@ const diagnosticJournal = createDiagnosticJournal();
 const recoverMacWidgetLaunchServicesRegistration = createMacWidgetLaunchServicesRecovery();
 
 app.setName(APP_NAME);
-if (process.platform === 'win32') app.setAppUserModelId('com.javis.tokenmonitor');
+if (process.platform === 'win32') app.setAppUserModelId(WHALE_DESKTOP ? 'com.ksanadu.whalemonitor' : 'com.javis.tokenmonitor');
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) app.exit(0);
@@ -3185,7 +3192,7 @@ let registeredWindowToggleShortcut = '';
 let windowToggleShortcutRegistered = false;
 let defaultTrayIcon = null;
 function getDefaultTrayIcon() {
-  if (!defaultTrayIcon) defaultTrayIcon = buildTrayIcon();
+  if (!defaultTrayIcon) defaultTrayIcon = buildTrayIcon({iconPath: WHALE_DESKTOP ? WHALE_APP_ICON_PATH : undefined});
   return defaultTrayIcon;
 }
 const AGENT_PID_PATH = pidFilePath();
@@ -5060,7 +5067,11 @@ function updateTrayDisplay() {
   if (trayShowsTitle(process.platform)) tray.setTitle(text);
   // Tooltip always shows a useful summary, even in icon-only mode where setTitle is blank.
   const tip = formatTrayText(visibleStats, 'both', currency, compactOptions);
-  tray.setToolTip(`Token Monitor - ${tip}`);
+  tray.setToolTip(`${APP_NAME} - ${tip}`);
+  if (WHALE_DESKTOP) {
+    tray.setImage(getDefaultTrayIcon());
+    return;
+  }
   // Icon: rendered bars image in bar modes, otherwise the app icon.
   let icon = null;
   if (barsImageMode || trayImageMode || customImageMode) {
@@ -5337,6 +5348,18 @@ function focusExistingWindow() {
       restoreWindowMaximized(mainWindow, settings);
     }
   }
+}
+
+function toggleWhaleMonitor() {
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && !mainWindow.isMinimized()) {
+    if (settings?.trayMode) hidePopover();
+    else mainWindow.close();
+    return;
+  }
+  if (!mainWindow || mainWindow.isDestroyed()) createWindow(undefined, {initiallyHidden: true});
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  if (settings?.trayMode) showPopover();
+  else showWindow(mainWindow);
 }
 
 function currentWindowToggleShortcutStatus() {
@@ -6357,13 +6380,17 @@ function configureWindowToggleShortcut() {
 }
 
 function ensureTray() {
-  if (!shouldCreateTray(settings)) return false;
+  if (!WHALE_DESKTOP && !shouldCreateTray(settings)) return false;
   if (tray && !tray.isDestroyed()) return;
   tray = createTray({
+    icon: WHALE_DESKTOP ? getDefaultTrayIcon() : undefined,
+    onToggleWhale: () => whaleDesktop?.toggle(),
     getMenuState: () => {
       const codex = trayCodexMenuState();
       return {
         appVersion: appVersion(),
+        whaleDesktop: WHALE_DESKTOP,
+        whaleVisible: whaleDesktop?.isVisible() === true,
         locale: trayMenuLocale(),
         refreshing: trayRefreshInFlight,
         trayContent: settings?.trayContent || 'tokens',
@@ -6453,7 +6480,7 @@ function exitTrayMode() {
     mainWindow.show();
     restoreWindowMaximized(mainWindow, settings);
   }
-  if (!shouldCreateTray(settings)) destroyTray();
+  if (!WHALE_DESKTOP && !shouldCreateTray(settings)) destroyTray();
   else ensureTray();
 }
 
@@ -6644,6 +6671,7 @@ const updateInstallQuit = createUpdateInstallQuitGuard({
   claim: () => { quitRequested = true; skipForcedQuit = true; },
   release: () => { quitRequested = false; skipForcedQuit = false; },
   onStalled: () => {
+    if (WHALE_DESKTOP) whaleAppUpdater?.reportInstallFailure('自动安装未启动，请重启小鲸鱼后重试，或打开 Release 手动安装。');
     // The bound is far enough out that reaching it means the install genuinely
     // stalled, which is exactly what the user is looking at: they pressed Install
     // and the app neither restarted nor complained. What to do about it depends on
@@ -6657,6 +6685,7 @@ const updateInstallQuit = createUpdateInstallQuitGuard({
     });
   },
   onHandoff: (afterStalledReport) => {
+    if (WHALE_DESKTOP && afterStalledReport) whaleAppUpdater?.noteHandoff();
     // The bound is a decision to stop waiting, not proof the installer is dead, so
     // a hand-off that turns up later withdraws the report rather than leaving the
     // app advising a restart it is about to perform itself.
@@ -6970,6 +6999,7 @@ async function checkAppUpdateProvider() {
 }
 
 function deriveAppUpdateState() {
+  if (WHALE_DESKTOP && whaleAppUpdater) return whaleAppUpdater.getState();
   const block = settings?.appUpdate || {};
   const currentVersion = app.getVersion();
   const latest = latestForCurrentVersion(block.lastKnownLatest || null, currentVersion);
@@ -7036,6 +7066,7 @@ function sendAppUpdatePush() {
 }
 
 async function runAppUpdateCheck({ force = false, bypassCooldown = false } = {}) {
+  if (WHALE_DESKTOP) return whaleAppUpdater?.check({manual: force}) || deriveAppUpdateState();
   // An outstanding install owns the updater until the guard is idle again.
   // electron-updater reports a failed check by emitting on the same global 'error'
   // event an install failure arrives on -- checkForUpdates() emits there and
@@ -7163,6 +7194,7 @@ function dismissAppUpdateVersion(version) {
 }
 
 async function downloadAndPrepareAppUpdate() {
+  if (WHALE_DESKTOP) return whaleAppUpdater?.check({manual: true, installRequested: true}) || deriveAppUpdateState();
   const support = appUpdateInstallSupport({ isPackaged: app.isPackaged, platform: process.platform, env: process.env });
   if (!support.supported) {
     setNativeAppUpdateState({ phase: 'error', error: support.reason || 'unsupported-platform', progress: null });
@@ -7217,6 +7249,7 @@ async function downloadAndPrepareAppUpdate() {
 }
 
 async function installDownloadedAppUpdate() {
+  if (WHALE_DESKTOP) return whaleAppUpdater?.install() || deriveAppUpdateState();
   // The other half of the same rule. Refusing new operations during the install
   // only holds the boundary if nothing was already running when it started, and a
   // check begun a moment earlier would still be reporting on the shared event.
@@ -7280,6 +7313,7 @@ function isAllowedExternalUrl(value) {
   if (parsed.hostname === 'github.com' && parsed.pathname.startsWith('/junhoyeo/tokscale')) return true;
   if (parsed.hostname === 'www.npmjs.com' && parsed.pathname.startsWith('/package/@tokscale/')) return true;
   if (parsed.hostname === 'github.com' && parsed.pathname.startsWith('/Javis603/token-monitor')) return true;
+  if (parsed.hostname === 'github.com' && (parsed.pathname === '/Ksanadu/Whale-Monitor' || parsed.pathname.startsWith('/Ksanadu/Whale-Monitor/'))) return true;
   if (parsed.hostname === 'codex-resets.com' && (parsed.pathname === '' || parsed.pathname === '/')) return true;
   if (
     (parsed.hostname === 'javis-ai.com' || parsed.hostname === 'www.javis-ai.com')
@@ -7301,7 +7335,7 @@ function loadWindowFile(target, options = {}) {
   const reveal = () => {
     if (revealed) return;
     revealed = true;
-    if (settings?.trayMode) return; // stay hidden until tray click
+    if (settings?.trayMode || options.initiallyHidden === true) return; // stay hidden until explicitly opened
     if (restoreWindowMaximizedForReveal(target, settings, {
       restoreMaximized: options.restoreMaximized === true,
       inactive: options.inactive === true,
@@ -7338,7 +7372,8 @@ function loadWindowFile(target, options = {}) {
     reveal();
   });
   const filePath = path.join(__dirname, 'renderer', 'index.html');
-  const load = options.query ? target.loadFile(filePath, { query: options.query }) : target.loadFile(filePath);
+  const query = {...options.query, ...(WHALE_DESKTOP ? {whaleDesktop: '1'} : {})};
+  const load = target.loadFile(filePath, {query});
   load.catch((error) => {
     console.log(`[window] renderer load failed: ${error.message}`);
     reveal();
@@ -7450,6 +7485,7 @@ function createWindow(boundsOverride, options = {}) {
   win.on('minimize', stopTaskbarZOrderKeeper);
   win.on('close', (event) => {
     if (quitRequested) return;
+    if (WHALE_DESKTOP) { event.preventDefault(); win.hide(); return; }
     const action = mainWindowCloseAction(settings, { platform: process.platform });
     if (action === 'hidePopover') {
       event.preventDefault();
@@ -7485,6 +7521,7 @@ function createWindow(boundsOverride, options = {}) {
     if (win.isVisible()) sendMainWindowVisibility(win);
   });
   loadWindowFile(win, {
+    initiallyHidden: options.initiallyHidden === true,
     waitForContent: options.waitForContent === true,
     inactive: options.inactive === true,
     collapsedFloatingBubble,
@@ -7495,7 +7532,7 @@ function createWindow(boundsOverride, options = {}) {
         suppressInitialNumberAnimation: options.suppressInitialNumberAnimation === true,
         viewState: rendererViewState
       }),
-      ...(settings?.trayMode ? { windowHidden: '1' } : {}),
+      ...(settings?.trayMode || options.initiallyHidden ? { windowHidden: '1' } : {}),
       ...(settings?.systemGlass === false ? { systemGlassDisabled: '1' } : {}),
       ...(windowsAccentFallback ? { windowsBackdropFallback: '1' } : {})
     }
@@ -7677,9 +7714,23 @@ function rebuildWindow() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   if (process.platform === 'darwin' && app.dock) app.dock.setIcon(APP_ICON_PATH);
   ensureSettingsLoaded();
+  if (WHALE_DESKTOP) {
+    // Earlier standalone builds exposed an inactive, unchecked upstream setting.
+    // Migrate once; subsequent explicit opt-outs remain persistent.
+    if (initializeWhaleUpdatePreference(settings)) saveSettings();
+    updateHandoffObserved = observeUpdateInstallHandoff(require('electron').autoUpdater, () => updateInstallQuit.noteHandoff());
+    whaleAppUpdater = createWhaleUpdater({currentVersion: app.getVersion(),
+      mode: installationKind({isPackaged: app.isPackaged}), dataDir: app.getPath('userData'),
+      fetcher: (...args) => net.fetch(...args), openExternal: url => shell.openExternal(url),
+      isAutomatic: () => settings.automaticAppUpdates === true,
+      beforeInstall: () => updateInstallQuit.request(), installFailed: () => updateInstallQuit.abort(),
+      onChange: () => sendAppUpdatePush(), logger: message => console.warn(message)});
+    powerMonitor.on('resume', () => void whaleAppUpdater.check());
+    powerMonitor.on('unlock-screen', () => void whaleAppUpdater.check());
+  }
   powerMonitor.on('lock-screen', () => notchController?.setLocked(true));
   powerMonitor.on('unlock-screen', () => notchController?.setLocked(false));
   // Switching the OS between light and dark repaints the taskbar underneath an
@@ -7715,12 +7766,18 @@ app.whenReady().then(() => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': [CSP_HEADER]
+        'Content-Security-Policy': [WHALE_DESKTOP && details.url.startsWith('whale://app/') ? WHALE_CSP : CSP_HEADER]
       }
     });
   });
   applyMacActivationPolicy();
-  createWindow();
+  if (WHALE_DESKTOP) {
+    whaleDesktop = await createWhaleDesktop({app, BrowserWindow, ipcMain, protocol: require('electron').protocol,
+      screen, shell, getStats: () => latestStats,
+      openMonitor: toggleWhaleMonitor,
+      logger: message => console.warn('[whale]', message)});
+  }
+  createWindow(undefined, {initiallyHidden: WHALE_DESKTOP});
   syncLoginItemSettingFromOs();
   configureWindowToggleShortcut();
   // The retired in-app npm updater kept upstream tokscale builds here; the
@@ -8426,6 +8483,37 @@ app.whenReady().then(() => {
     const win = BrowserWindow.fromWebContents(event.sender);
     return getNativeMaterialState(win);
   });
+  function whaleDisplayForMonitor(event, advance) {
+    if (!WHALE_DESKTOP || !whaleDesktop || !mainWindow || mainWindow.isDestroyed()
+      || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) {
+      throw new Error('Untrusted whale monitor request');
+    }
+    return advance ? whaleDesktop.nextDisplay() : whaleDesktop.displayState();
+  }
+  ipcMain.handle('whale:display', event => whaleDisplayForMonitor(event, false));
+  ipcMain.handle('whale:nextDisplay', event => whaleDisplayForMonitor(event, true));
+  ipcMain.handle('whale:settings', async (event, command, value) => {
+    whaleDisplayForMonitor(event, false);
+    const normalized = require('./whale/settingsCommands').normalizeSettingsCommand(command, value);
+    let importedRole;
+    if (normalized.command === 'importRole') {
+      const result = await dialog.showOpenDialog(mainWindow, {title: '导入小鲸鱼角色', properties: ['openFile'],
+        filters: [{name: '角色图片', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp']}]});
+      if (result.canceled || !result.filePaths[0]) return whaleDesktop.settingsCommand('snapshot');
+      const filename = result.filePaths[0];
+      const stat = await fs.promises.stat(filename);
+      if (!stat.isFile() || stat.size > 16 * 1024 * 1024) throw new Error('角色图片不能超过 16 MB');
+      const types = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp'};
+      const type = types[path.extname(filename).toLowerCase()];
+      if (!type) throw new Error('不支持的角色图片格式');
+      importedRole = {name: path.basename(filename), type, base64: (await fs.promises.readFile(filename)).toString('base64')};
+    }
+    return whaleDesktop.settingsCommand(normalized.command, normalized.value, importedRole);
+  });
+  ipcMain.handle('whale:about', event => {
+    whaleDisplayForMonitor(event, false);
+    return whaleDesktop.about();
+  });
   ipcMain.handle('app:getInfo', () => ({
     notchCapabilities: notchController?.getCapabilities() || null,
     version: app.getVersion(),
@@ -8444,11 +8532,12 @@ app.whenReady().then(() => {
   }));
   ipcMain.handle('diagnostics:generate', async () => {
     const report = await diagnosticReportGenerator.generate();
+    const diagnosticText = WHALE_DESKTOP ? require('./whale/about').brandDesktopDiagnostic(report.text) : report.text;
     return {
       generatedAt: report.generatedAt,
       completeness: report.completeness,
-      text: report.text,
-      bytes: report.bytes,
+      text: diagnosticText,
+      bytes: Buffer.byteLength(diagnosticText, 'utf8'),
       truncated: report.truncated,
       includedClientCount: report.includedClientCount,
       omittedClientCount: report.omittedClientCount,
@@ -9489,11 +9578,17 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
-  scheduleStartupAppUpdateCheck();
-  startAppUpdateBackgroundChecks();
+  if (WHALE_DESKTOP) whaleAppUpdater.start();
+  else {
+    scheduleStartupAppUpdateCheck();
+    startAppUpdateBackgroundChecks();
+  }
 });
 
-app.on('second-instance', focusExistingWindow);
+app.on('second-instance', () => {
+  if (WHALE_DESKTOP) whaleDesktop?.show();
+  else focusExistingWindow();
+});
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 // Every quit route (Cmd+Q, last window closed, system shutdown) lands here.
 // performQuit is synchronous through to the exit, so there is nothing to wait
@@ -9501,6 +9596,8 @@ app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(
 // OS-initiated logout or restart on macOS.
 app.on('before-quit', () => {
   quitRequested = true;
+  whaleDesktop?.dispose();
+  whaleAppUpdater?.stop();
   antigravityOAuthLoginController?.abort();
   workbuddyManagedAccountService?.cancelLogin();
   resetMacWidgetReloadThrottle();

@@ -290,9 +290,9 @@ const SERVICE_STATUS_PLACEHOLDERS = [
   { id: 'deepseek', label: 'DeepSeek', pageUrl: 'https://status.deepseek.com' }
 ];
 const SERVICE_PROVIDER_OPTIONS = SERVICE_STATUS_PLACEHOLDERS.map((entry) => ({ id: entry.id, label: entry.label }));
-const TOKEN_MONITOR_REPOSITORY_URL = 'https://github.com/Javis603/token-monitor';
-const TOKEN_MONITOR_ISSUES_URL = `${TOKEN_MONITOR_REPOSITORY_URL}/issues/new/choose`;
-const TOKEN_MONITOR_WEBSITE_URL = 'https://javis-ai.com/token-monitor/';
+const TOKEN_MONITOR_REPOSITORY_URL = new URLSearchParams(location.search).get('whaleDesktop') === '1' ? 'https://github.com/Ksanadu/Whale-Monitor' : 'https://github.com/Javis603/token-monitor';
+const TOKEN_MONITOR_ISSUES_URL = `${TOKEN_MONITOR_REPOSITORY_URL}/issues/new${new URLSearchParams(location.search).get('whaleDesktop') === '1' ? '' : '/choose'}`;
+const TOKEN_MONITOR_WEBSITE_URL = new URLSearchParams(location.search).get('whaleDesktop') === '1' ? `${TOKEN_MONITOR_REPOSITORY_URL}/releases` : 'https://javis-ai.com/token-monitor/';
 const TOKEN_MONITOR_WSL_SQLITE_GUIDE_URL = `${TOKEN_MONITOR_REPOSITORY_URL}/blob/main/docs/wsl-sqlite-setup.md`;
 const serviceStatusProviderPreferencesApi = window.TokenMonitorServiceStatusProviderPreferences;
 const SETTINGS_SECTION_IDS = ['general', 'main', 'window', 'appearance', 'tools', 'limits', 'subscriptions', 'sync'];
@@ -1780,7 +1780,7 @@ function renderAutomaticAppUpdateControl() {
   els.automaticAppUpdatesInput.disabled = control.disabled;
   els.automaticAppUpdatesRow?.classList.toggle('is-disabled', control.unavailable);
   if (els.automaticAppUpdatesNote) {
-    els.automaticAppUpdatesNote.textContent = t(control.descriptionKey);
+    els.automaticAppUpdatesNote.textContent = control.description || t(control.descriptionKey);
   }
 }
 

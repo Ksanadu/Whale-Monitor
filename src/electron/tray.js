@@ -198,6 +198,10 @@ function prepareTrayIconForPlatform(img, { platform = process.platform, scaleFac
 function buildTrayIcon(options = {}) {
   const platform = options.platform || process.platform;
   const nativeImage = options.nativeImage || require('electron').nativeImage;
+  if (options.iconPath) {
+    const image = nativeImage.createFromPath(options.iconPath);
+    return resizeTrayIconForPlatform(image, { platform, scaleFactor: options.scaleFactor, square: true });
+  }
   if (platform === 'darwin') {
     const image = nativeImage.createFromPath(TRAY_ICON_PATH);
     const sized = resizeTrayIconForPlatform(image, { platform, scaleFactor: options.scaleFactor });
@@ -354,6 +358,7 @@ function buildTrayMenuTemplate(options = {}) {
     };
   })() : null;
   return [
+    ...(state.whaleDesktop ? [{label: state.whaleVisible ? '隐藏小鲸鱼' : '显示小鲸鱼', click: callback('onToggleWhale')}, {type: 'separator'}] : []),
     {
       label: t(state.refreshing ? 'trayMenu.refreshing' : 'trayMenu.refreshNow'),
       enabled: !state.refreshing,
@@ -429,6 +434,7 @@ async function runTrayMenuAction({ setInFlight, refreshContextMenu, action }) {
 
 function createTray({
   electron = require('electron'),
+  icon,
   getMenuState,
   onOpenSettings,
   onOpenView,
@@ -440,20 +446,22 @@ function createTray({
   onSwitchCodexAccount,
   onToggle,
   getWindowVisible,
+  onToggleWhale,
   onMouseDown,
   onCancelMouseDown,
   platform = process.platform,
   translateMenu
 }) {
   const { Tray, Menu, nativeImage } = electron;
-  const tray = new Tray(buildTrayIcon({ platform, nativeImage }));
-  tray.setToolTip('Token Monitor');
+  const tray = new Tray(icon || buildTrayIcon({ platform, nativeImage }));
+  tray.setToolTip(getMenuState?.().whaleDesktop ? 'Whale Monitor' : 'Token Monitor');
 
   const menuState = () => (typeof getMenuState === 'function' ? getMenuState() : {});
   const buildMenu = (state = menuState()) => Menu.buildFromTemplate(buildTrayMenuTemplate({
     state,
     platform,
     onOpenSettings,
+    onToggleWhale,
     onOpenView,
     onQuit,
     onRefresh,

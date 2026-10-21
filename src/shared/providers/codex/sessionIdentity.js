@@ -21,7 +21,7 @@ function nativeIdForFile(file) {
       const end = newline < 0 ? bytes.length : newline;
       const first = end <= MAX_HEADER_BYTES ? JSON.parse(bytes.subarray(0, end).toString('utf8')) : null;
       const id = first?.type === 'session_meta' && typeof first.payload?.id === 'string' ? first.payload.id : '';
-      identityCache.set(file, { fingerprint, id });
+      identityCache.set(file, { fingerprint, id, subagent: isSubagentHeader(first?.payload) });
       return id;
     }
     fd = fs.openSync(file, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0));
@@ -41,10 +41,21 @@ function nativeIdForFile(file) {
     }
     const first = complete ? JSON.parse((chunks.length === 1 ? chunks[0] : Buffer.concat(chunks)).toString('utf8')) : null;
     const id = first?.type === 'session_meta' && typeof first.payload?.id === 'string' ? first.payload.id : '';
-    identityCache.set(file, { fingerprint, id });
+    identityCache.set(file, { fingerprint, id, subagent: isSubagentHeader(first?.payload) });
     return id;
   } catch (_) { return ''; }
   finally { if (fd !== undefined) fs.closeSync(fd); }
 }
 
-module.exports = { nativeIdForFile };
+function isSubagentHeader(payload) {
+  const source = payload?.source;
+  return Boolean((source && typeof source === 'object') || /subagent|guardian/i.test(String(source || ''))
+    || payload?.parent_thread_id || payload?.parent_session_id);
+}
+
+function codexSessionIdentity(file) {
+  const id = nativeIdForFile(file);
+  return {id, subagent: !id || identityCache.get(file)?.subagent !== false};
+}
+
+module.exports = { nativeIdForFile, codexSessionIdentity };
