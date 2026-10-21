@@ -24,6 +24,7 @@ const { isCompressedCodexTranscript, readCompressedCodexTranscript } = require('
 const { normalizeSessionContext } = require('../../sessionContext');
 const { createPromptCacheState, applyPromptCacheEntry } = require('../../sessionPromptCache');
 const { applyCompletionRecord } = require('./completion');
+const { nativeIdForFile } = require('./sessionIdentity');
 
 const TAIL_READ_BUDGETS = [256 * 1024, 1024 * 1024];
 const TURN_READ_MAX_BYTES = 8 * 1024 * 1024;
@@ -103,8 +104,8 @@ function readCodexSessionState(filePath, deps = {}) {
     if (cached?.identity === identity && cached.size === stat.size && cached.mtimeMs === stat.mtimeMs) return cached;
     const compressed = isCompressedCodexTranscript(filePath);
     const appendOnly = !compressed && cached?.identity === identity && stat.size > cached.size;
-    const state = appendOnly ? { ...cached, pendingInputCalls: new Set(cached.pendingInputCalls), promptCacheState: { ...cached.promptCacheState } }
-      : { context: null, turnEnded: undefined, pendingInputCalls: new Set(), promptCacheState: createPromptCacheState(), trailing: Buffer.alloc(0), droppingLine: false };
+    const state = appendOnly ? { ...cached, completionUsage: new Map(cached.completionUsage), pendingInputCalls: new Set(cached.pendingInputCalls), promptCacheState: { ...cached.promptCacheState } }
+      : { context: null, turnEnded: undefined, completionSessionId: nativeIdForFile(filePath), pendingInputCalls: new Set(), promptCacheState: createPromptCacheState(), trailing: Buffer.alloc(0), droppingLine: false };
     if (compressed) {
       const bytes = readCompressedCodexTranscript(filePath, deps);
       const start = Math.max(0, bytes.length - TURN_READ_MAX_BYTES);

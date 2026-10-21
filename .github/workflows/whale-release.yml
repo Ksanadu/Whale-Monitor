@@ -38,7 +38,7 @@ jobs:
           "WHALE_BUILD_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - run: npm run lint
       - name: Verify desktop and updater regressions
-        run: node --test tests/electron/whale*.test.js tests/electron/aboutSettings.test.js tests/electron/appUpdateState.test.js tests/electron/appUpdatePresentation.test.js tests/electron/updateInstallQuit.test.js tests/electron/tray.test.js tests/electron/windowLifecycle.test.js tests/electron/statsRenderScheduler.test.js tests/shared/codexLocalUsage.test.js tests/shared/codexSessionActivity.test.js
+        run: node --test tests/electron/whale*.test.js tests/electron/aboutSettings.test.js tests/electron/appUpdateState.test.js tests/electron/appUpdatePresentation.test.js tests/electron/updateInstallQuit.test.js tests/electron/tray.test.js tests/electron/windowLifecycle.test.js tests/electron/statsRenderScheduler.test.js tests/shared/codexLocalUsage.test.js tests/shared/codexSessionActivity.test.js tests/shared/sessionContext.test.js tests/shared/codexWaiting.test.js
       - run: npm run dist:whale:win
       - name: Verify installer hashes and update channels
         run: node scripts/verify-whale-release.js
@@ -50,7 +50,7 @@ jobs:
           $version = $env:WHALE_BUILD_VERSION
           $tag = "v$version"
           $repo = $env:GITHUB_REPOSITORY
-          $notes = "Windows x64 独立小鲸鱼桌宠正式版。`n`n- 修复 Codex 长时间对话、恢复历史会话后完成却不播报的问题。Windows 写句柄未关闭时文件修改时间可能保持旧值，现在通过近期会话索引发现日志，再核验日志中的成功完成事件。`n- 会话索引更新不会直接触发播报，保留根任务校验、错误/取消/子任务过滤与持久化去重。`n- 兼容 Codex 秒级完成时间、Windows 转义启动参数与 OpenCode 2 succeeded 状态。`n- 支持 Codex、OpenCode、ZCode 和 Antigravity 本机成功任务提醒，复用现有音效、音量和气泡设置，无需 DSH 后端。`n- 未知本轮 Token 显示「—」，保持用量统计独立。`n- 安装版自动更新；便携版打开最新 Release 页面。`n`n源提交：$env:GITHUB_SHA`n`n来源规则和限制见 docs/whale-completions.md。"
+          $notes = "Windows x64 独立小鲸鱼桌宠正式版。`n`n- 修复 Codex 任务完成能播报但本轮 Token 显示未知的问题。优先使用原生日志中与会话、任务 ID 匹配的本轮累计用量，首次对话和中途开始监测也能显示已有记录的完整用量。`n- 重复用量快照不重复累加；缓存输入和推理输出不重复计算，不以全局总量相减，避免多个任务串账。`n- 旧格式日志保留会话累计差，满足完整新会话证据时补齐零基线；确实缺少用量证据时继续显示「—」。`n- 保留 Codex 长会话旧文件时间兼容、错误/取消/子任务过滤及完成事件去重。`n- 支持 Codex、OpenCode、ZCode 和 Antigravity 的本机完成提醒，无需 DSH 后端。`n- 安装版自动更新；便携版打开最新 Release 页面。`n`n源提交：$env:GITHUB_SHA`n`n来源规则和限制见 docs/whale-completions.md。"
           $notes | Set-Content -Path release-notes.txt -Encoding utf8
           $assets = @(
             "dist/whale/Whale-Monitor-$version-x64-nsis.exe",
